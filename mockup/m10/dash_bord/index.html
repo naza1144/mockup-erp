@@ -7,8 +7,8 @@
 
     Flow:
     1. โหลด → Header (ชื่อระบบ + User: Admin/DevOps + ปุ่มรีเซ็ต)
-    2. Sidebar 9 เมนู (Dashboard, Schema, Event Bus, Storage, Notification,
-                      Audit Log, DevOps & CI/CD, API Standards, Traefik Admin)
+    2. Sidebar 8 เมนู (Dashboard, Event Bus, Storage, Notification,
+                       Audit Log, DevOps & CI/CD, API Standards, Traefik Admin)
     3. [คลิกเมนู] → setActive() → iframe เปิด page นั้น
     4. Content Area → iframe แสดง page ย่อย
     5. รองรับ postMessage จาก child iframe เพื่อ sync active menu
@@ -47,9 +47,6 @@
     <p class="px-2 py-1 text-[11px] uppercase tracking-wide text-gray-400">เมนู</p>
     <a href="pages/page-dashboard.html" target="main-frame" class="menu-btn w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50" onclick="setActive(this)">
       Dashboard
-    </a>
-    <a href="pages/page-schemas.html" target="main-frame" class="menu-btn w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50" onclick="setActive(this)">
-      Schema & Data Silo
     </a>
     <a href="pages/page-events.html" target="main-frame" class="menu-btn w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50" onclick="setActive(this)">
       Event Bus
