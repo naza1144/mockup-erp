@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Platform Dashboard — หน้าแรก (ภาพรวมระบบ)
+
+    Flow:
+    1. โหลด → KPI Cards (Schema, Events, Buckets, DLQ)
+    2. Service Status — แสดง 7 Business Modules
+       └─ ผู้ใช้คลิก "Restart" → 2 วิ → กลับเป็น healthy
+    3. Event Bus Status (NATS nodes, Queue Depth, DLQ)
+    4. Notification Status (sent, failed, dead)
+    5. Recent Audit Log (4 รายการล่าสุด)
+    6. ปุ่ม "รีเฟรช" → อัปเดตเวลา + re-render
+
+    Epic: E2 (Event Bus) · E4 (Notification) · E5 (Audit) · E6 (DevOps)
+    ═══════════════════════════════════════════════════════
+  -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M10 · Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Noto Sans Thai', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6">
+  <h1 class="text-2xl font-bold mb-1">Platform Dashboard</h1>
+  <p class="text-xs text-blue-600 mb-2">M10 · Cross-cutting Infrastructure — ภาพรวมสถานะของ Business Modules และ Infrastructure Components ทั่วทั้งระบบ (Dashboard)</p>
+  <p class="text-xs text-gray-500 mb-4">อัปเดตล่าสุด: <span id="dash-time" class="font-semibold"></span></p>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
+      <p class="text-xs text-gray-500">Schema ทั้งหมด</p>
+      <p id="kpi-schemas" class="text-2xl font-bold">10</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
+      <p class="text-xs text-gray-500">Core Events</p>
+      <p id="kpi-events" class="text-2xl font-bold">10</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
+      <p class="text-xs text-gray-500">Buckets</p>
+      <p id="kpi-buckets" class="text-2xl font-bold">5</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
+      <p class="text-xs text-gray-500">DLQ Messages</p>
+      <p id="kpi-dlq" class="text-2xl font-bold text-red-600">3</p>
+    </div>
+  </div>
+
+  <!-- Service Status + Restart -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-semibold">สถานะบริการ (Business Modules)</h2>
+      <button onclick="refreshStatus()" class="text-xs text-slate-700 hover:bg-slate-50 rounded-xl px-4 py-2 border border-slate-200">🔄 รีเฟรช</button>
+    </div>
+    <div id="service-status" class="text-xs space-y-1"></div>
+  </div>
+
+  <!-- Quick Status -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h2 class="text-sm font-semibold mb-2">Event Bus Status</h2>
+      <div class="text-xs space-y-1 text-gray-600">
+        <div class="flex justify-between"><span>NATS Nodes</span><span>3/3 🟢</span></div>
+        <div class="flex justify-between"><span>Queue Depth</span><span id="queue-depth" class="text-amber-600 font-semibold">1,289</span></div>
+        <div class="flex justify-between"><span>DLQ</span><span id="dlq-count" class="text-red-600 font-semibold">3 messages</span></div>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h2 class="text-sm font-semibold mb-2">Notification Status</h2>
+      <div class="text-xs space-y-1 text-gray-600">
+        <div class="flex justify-between"><span>ส่งสำเร็จ</span><span id="notif-sent" class="text-green-600 font-semibold">3</span></div>
+        <div class="flex justify-between"><span>ล้มเหลว</span><span id="notif-failed" class="text-amber-600 font-semibold">1</span></div>
+        <div class="flex justify-between"><span>Dead</span><span id="notif-dead" class="text-red-600 font-semibold">1</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Audit -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+    <h2 class="text-sm font-semibold mb-2">Audit Log ล่าสุด</h2>
+    <div id="recent-audit" class="text-xs space-y-1"></div>
+  </div>
+
+  <script src="../shared.js"></script>
+  <script>
+    const SEED_SERVICES = [
+      { id: "M0", name: "Identity & Account",     status: "healthy",  pods: "3/3", cpu: "120m", mem: "64Mi" },
+      { id: "M1", name: "หลักสูตร (Curriculum)",   status: "healthy",  pods: "2/2", cpu: "280m", mem: "92Mi" },
+      { id: "M1p",name: "จัดตารางเรียน (Planning)", status: "healthy",  pods: "2/2", cpu: "150m", mem: "56Mi" },
+      { id: "M3", name: "ข้อมูลอาจารย์ (Faculty)",  status: "healthy",  pods: "2/2", cpu: "80m",  mem: "42Mi" },
+      { id: "M4", name: "ทะเบียนนักศึกษา (Registry)", status: "degraded", pods: "1/2", cpu: "720m", mem: "128Mi", warn: "OOMKilled 2 ครั้ง" },
+      { id: "M8", name: "สหกิจศึกษา (Co-op)",      status: "healthy",  pods: "2/2", cpu: "180m", mem: "76Mi" },
+      { id: "M9", name: "โครงงาน/วิทยานิพนธ์ (Thesis)", status: "down", pods: "0/2", cpu: "0m",  mem: "0Mi",  error: "CrashLoopBackOff" },
+    ];
+
+    const STATUS_STYLE = {
+      healthy:  { badge: "bg-green-100 text-green-700", text: "🟢 ปกติ" },
+      degraded: { badge: "bg-amber-100 text-amber-700", text: "🟡 มีปัญหา" },
+      down:     { badge: "bg-red-100 text-red-700",     text: "🔴 ล่ม" },
+    };
+
+    let services = loadData("services", SEED_SERVICES);
+
+    function init() {
+      notifyParentPage("dashboard");
+      document.getElementById("dash-time").textContent = formatDate();
+      renderServices();
+      renderStats();
+      renderAudit();
+    }
+
+    function renderServices() {
+      document.getElementById("service-status").innerHTML = services.map(s => {
+        const st = STATUS_STYLE[s.status] || STATUS_STYLE.healthy;
+        return `<div class="service-row flex items-center justify-between border-b border-gray-100 pb-2 mb-1" data-id="${s.id}">
+          <div class="flex items-center gap-3">
+            <span class="font-semibold w-8">${s.id}</span>
+            <span>${s.name}</span>
+            <span class="text-gray-400">Pods: ${s.pods} · CPU: ${s.cpu} · RAM: ${s.mem}</span>
+            ${s.warn ? `<span class="text-amber-600">⚠ ${s.warn}</span>` : ''}
+            ${s.error ? `<span class="text-red-600">🔴 ${s.error}</span>` : ''}
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.badge}">${st.text}</span>
+            ${s.status !== 'healthy' ? `<button onclick="restartService('${s.id}')" class="text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-xl px-3 py-1">🔄 Restart</button>` : ''}
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function restartService(id) {
+      if (!confirm(`ต้องการ restart ${id} ใช่หรือไม่?`)) return;
+      const svc = services.find(s => s.id === id);
+      if (!svc) return;
+      alert(`⏳ กำลัง restart ${id}...`);
+      setTimeout(() => {
+        svc.status = "healthy";
+        svc.pods = "2/2";
+        svc.cpu = "50m";
+        svc.mem = "32Mi";
+        svc.warn = null;
+        svc.error = null;
+        saveData("services", services);
+        renderServices();
+        renderStats();
+        alert(`✅ Restart ${id} สำเร็จ`);
+      }, 2000);
+    }
+
+    function refreshStatus() {
+      document.getElementById("dash-time").textContent = formatDate();
+      renderServices();
+    }
+
+    function renderStats() {
+      const dlq = loadData("dlq", SEED_DLQ);
+      document.getElementById("kpi-dlq").textContent = dlq.length;
+      document.getElementById("dlq-count").textContent = dlq.length + " messages";
+
+      const deliveries = loadData("deliveries", SEED_DELIVERIES);
+      document.getElementById("notif-sent").textContent = deliveries.filter(d => d.status === "sent").length;
+      document.getElementById("notif-failed").textContent = deliveries.filter(d => d.status === "failed").length;
+      document.getElementById("notif-dead").textContent = deliveries.filter(d => d.status === "dead").length;
+    }
+
+    function renderAudit() {
+      const audit = loadData("audit", SEED_AUDIT);
+      document.getElementById("recent-audit").innerHTML = audit.slice(0, 4).map(a =>
+        `<div class="flex justify-between border-b border-gray-100 pb-1">
+          <span>${a.time}</span>
+          <span class="font-semibold">${a.actor}</span>
+          <span class="${a.action === 'DELETE' ? 'text-red-600' : a.action === 'INSERT' ? 'text-green-600' : 'text-blue-600'}">${a.action}</span>
+          <span class="text-gray-500">${a.service}</span>
+          <span>${a.detail}</span>
+        </div>`
+      ).join("");
+    }
+    init();
+  </script>
+</body>
+</html>
