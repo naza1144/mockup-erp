@@ -37,8 +37,27 @@
     <div id="pipeline-list" class="text-xs space-y-1"></div>
   </div>
 
-  <div class="mt-4 text-xs text-gray-400 italic">
-    ⏳ Observability (Loki + Prometheus + Grafana) — 🔜 dev in next version (P5)
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mt-4">
+    <h2 class="text-sm font-semibold mb-3">📊 Observability Stack (UC-18 · FN-X-054)</h2>
+    <div class="grid grid-cols-3 gap-3 text-xs mb-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></span>
+        <span>Loki <span class="text-gray-400">(Log)</span> <span class="text-green-600 font-medium">🟢 retention 30d</span></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></span>
+        <span>Prometheus <span class="text-gray-400">(Metrics)</span> <span class="text-green-600 font-medium">🟢 retention 90d</span></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></span>
+        <span>Grafana <span class="text-gray-400">(Dashboard)</span> <span class="text-green-600 font-medium">🟢 Active</span></span>
+      </div>
+    </div>
+    <a href="page-observability.html" target="main-frame"
+       class="inline-flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 rounded-xl px-4 py-2 border border-slate-200 font-medium transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      เปิด Observability Dashboard →
+    </a>
   </div>
 
   <script src="../shared.js"></script>

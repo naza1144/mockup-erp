@@ -2,19 +2,19 @@
 
 ## ภาพรวมระบบ (System Overview)
 
-M10 Platform Console เป็น Dashboard สำหรับ Platform Engineer / Admin ในการจัดการโครงสร้างพื้นฐานส่วนกลางของระบบ ERP บริหารหลักสูตร ประกอบด้วย 9 หน้า ครอบคลุม 7 Epics (E1–E7) ตาม Functional Requirements
+M10 Platform Console เป็น Dashboard สำหรับ Platform Engineer / Admin ในการจัดการโครงสร้างพื้นฐานส่วนกลางของระบบ ERP บริหารหลักสูตร ประกอบด้วย **10 หน้า** ครอบคลุม 7 Epics (E1–E7) ตาม Functional Requirements
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    M10 · Platform Console                     │
-├──────────┬──────────┬──────────┬──────────┬─────────────────┤
-│Dashboard │ Schema   │ Event Bus│ Storage  │  Notification   │
-│ (ภาพรวม)  │ (E1)     │ (E2)     │ (E3)     │  (E4)           │
-├──────────┼──────────┼──────────┼──────────┼─────────────────┤
-│ Audit Log│ DevOps   │ API      │ Traefik  │                 │
-│ (E5)     │ & CI/CD  │ Standards│ Admin    │                 │
-│          │ (E6)     │ (E7)     │          │                 │
-└──────────┴──────────┴──────────┴──────────┴─────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                    M10 · Platform Console                          │
+├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
+│Dashboard │ Schema   │ Event Bus│ Storage  │  Notification       │
+│ (ภาพรวม)  │ (E1)     │ (E2)     │ (E3)     │  (E4)               │
+├──────────┼──────────┼──────────┼──────────┼─────────────────────┤
+│ Audit Log│ DevOps   │ Obs'ty   │ API      │ Traefik Admin       │
+│ (E5)     │ &CI/CD   │ Stack    │ Standards│ (E7)                │
+│          │ (E6)     │ (E6·UC18)│ (E7)     │                     │
+└──────────┴──────────┴──────────┴──────────┴─────────────────────┘
 ```
 
 ---
@@ -476,6 +476,68 @@ Internet → Traefik (erp.ubu.ac.th:443)
 
 ---
 
+## 10. Observability Stack (`page-observability.html`) — E6 · UC-18
+
+### Epic: E6 · DevOps & K8s — UC-18 (Observability · FN-X-054)
+
+**วัตถุประสงค์:** แสดงผล Observability Stack รวมศูนย์ — Prometheus metrics, Loki log aggregation, Tempo/Jaeger distributed tracing ในธีม Grafana Dashboard (Dark Mode)
+
+### Flow การทำงาน
+
+```
+[โหลดหน้า]
+    ↓
+├─ Header: ชื่อ Observability Stack + สถานะ Stack (🟢 Running)
+│
+├─ 3 Tabs Navigation: Metrics | Logs | Tracing
+│
+├─── TAB 1: Metrics (Prometheus) ─────────────────────────────
+│   ├─ Selector: Service/Module (All / M0–M9), Time Range (5m–24h)
+│   ├─ 4 Panels (SVG Chart):
+│   │   ├─ CPU Utilization (%)
+│   │   ├─ Memory Allocation (MB)
+│   │   ├─ Request Rate (RPS)
+│   │   └─ HTTP 5xx Error Rate (%) — alert สีแดงเมื่อ > 1%
+│   └─ [เปลี่ยน Service หรือ Time Range] → updateMetricGraphs() → re-render SVG
+│       เช่น M4 (degraded) → CPU/Mem สูง, M9 (down) → Error Rate 85%+
+│
+├─── TAB 2: Logs (Loki) ──────────────────────────────────────
+│   ├─ Filters: Service Filter, Log Level (INFO/WARN/ERROR/DEBUG), Search text
+│   ├─ Log Window แสดง log stream real-time (Live Tail ทุก 3 วิ)
+│   │   └─ Log Level สีต่างกัน: INFO=เขียว, WARN=เหลือง, ERROR=แดง, DEBUG=เทา
+│   ├─ กด [Pause Tail] → หยุด auto-append → ดูย้อนหลังได้
+│   ├─ กด [Resume Tail] → กลับมา Live Tail
+│   ├─ กด [trace:xxx] ในบรรทัด log → เปิด Tracing tab + select trace อัตโนมัติ
+│   └─ กด [Clear Logs] → เคลียร์ log ทั้งหมด
+│
+└─── TAB 3: Tracing (Tempo/Jaeger) ─────────────────────────
+    ├─ ซ้าย: Trace List (4 transactions)
+    │   ├─ POST /v1/identity/login — 180ms (success)
+    │   ├─ GET /v1/registry/students — 320ms (success)
+    │   ├─ POST /v1/thesis/submit — 120ms (failed)
+    │   └─ POST /v1/coop/evaluate — 210ms (success)
+    │
+    ├─ [คลิก Trace] → โหลด Span Waterfall
+    │   ├─ ส่วนบน: Trace UUID, Duration, Span count
+    │   ├─ ตาราง Waterfall: แต่ละ span มี offset bar สีตามประเภท
+    │   │   ├─ 🟣 Violet = traefik-gateway
+    │   │   ├─ 🔵 Sky = service (m0–m9)
+    │   │   ├─ 🟢 Emerald = postgres db query
+    │   │   ├─ 🟡 Amber = NATS / MinIO
+    │   │   └─ 🔴 Rose = error span
+    │   └─ Level indent: Gateway (L0) → Middleware/Service (L1) → DB/Event (L2)
+    │
+    └─ [คลิก Span] → แสดง Span Metadata Panel
+        └─ Tags/Annotations: http.method, db.statement, messaging.system, error, etc.
+```
+
+### User Stories ที่เกี่ยวข้อง
+- ในฐานะ Platform Engineer ฉันต้องการดู CPU/Memory/RPS ของแต่ละ service บนกราฟ
+- ในฐานะ Admin ฉันต้องการ filter log ตาม level และค้นหา keyword ได้
+- ในฐานะ DevOps ฉันต้องการวิเคราะห์ Request Trace เพื่อหาสาเหตุของ latency
+
+---
+
 ## ความสัมพันธ์ระหว่างหน้า (Cross-page Dependencies)
 
 | หน้า | ใช้ข้อมูลร่วมกับ | หมายเหตุ |
@@ -485,7 +547,7 @@ Internet → Traefik (erp.ubu.ac.th:443)
 | Storage | Dashboard | Bucket count แสดงใน KPI |
 | Audit | Dashboard | Recent audit แสดงใน Dashboard |
 | DevOps | Traefik | Observability stack แยกจาก gateway |
-| API Standards | Traefik | Middleware กำหนดที่ Standards -->
+| Observability | API/Traefik | Trace ID เชื่อมโยง log และ request flow |
 
 ---
 
