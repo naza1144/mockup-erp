@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · จัดการรายวิชา</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 7. Course Management — UC-A8/A9 (ตาม Data Design) ═══ -->
+<div>
+  <div class="flex items-center justify-between mb-4">
+    <div><h1 class="text-2xl font-bold">จัดการรายวิชา</h1><p class="text-xs text-gray-500"><span id="cs-count"></span> รายวิชา</p></div>
+    <a href="page-course-search.html" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">ค้นหารายวิชา</a>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-300 shadow-md overflow-hidden mb-4">
+    <table class="w-full text-sm border-collapse">
+      <thead>
+        <tr class="bg-gray-200 text-xs uppercase tracking-wider text-gray-700 border-b-2 border-gray-400">
+          <th class="text-left px-4 py-3 border-r border-gray-300">รหัสวิชา</th>
+          <th class="text-left px-4 py-3 border-r border-gray-300">ชื่อวิชา</th>
+          <th class="text-left px-4 py-3 border-r border-gray-300">หน่วยกิต</th>
+          <th class="text-left px-4 py-3 border-r border-gray-300">ประเภท</th>
+          <th class="text-left px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody id="cs-rows"></tbody>
+    </table>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 max-w-3xl space-y-2">
+    <p class="text-sm font-semibold">เพิ่มรายวิชาใหม่ (UC-A8)</p>
+    <div class="grid grid-cols-4 gap-2">
+      <input id="cs-code" placeholder="รหัสวิชา" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-mono">
+      <input id="cs-name-th" placeholder="ชื่อวิชา (ไทย)" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm col-span-2">
+      <input id="cs-credits" type="number" placeholder="หน่วยกิต" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+    </div>
+    <div class="flex gap-2">
+      <select id="cs-type" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+        <option value="LECTURE">บรรยาย</option><option value="PRACTICE">ปฏิบัติ</option><option value="SEMINAR">สัมมนา</option>
+        <option value="PROJECT">โครงงาน</option><option value="THESIS">วิทยานิพนธ์</option><option value="COOP">สหกิจ</option>
+      </select>
+      <select id="cs-prereq" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1"></select>
+      <button onclick="addCourse()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg px-3">เพิ่มวิชา</button>
+    </div>
+    <p id="cs-error" class="text-xs text-red-600 hidden"></p>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let courses = loadData("m1c_courses", seedCourses);
+
+function hasCircular(courseId, requiredId, visited = new Set()) {
+  if (requiredId === courseId) return true;
+  if (visited.has(requiredId)) return false;
+  visited.add(requiredId);
+  const req = courses.find((c) => c.course_id === requiredId);
+  return req ? (req.prereq_ids || []).some((id) => hasCircular(courseId, id, visited)) : false;
+}
+function addCourse() {
+  const code = document.getElementById("cs-code").value.trim();
+  const nameTh = document.getElementById("cs-name-th").value.trim();
+  const credits = Number(document.getElementById("cs-credits").value);
+  const err = document.getElementById("cs-error");
+  if (!code || !nameTh || !credits) { err.textContent = "กรอกข้อมูลให้ครบ"; err.classList.remove("hidden"); return; }
+  if (courses.some((c) => c.code === code)) { err.textContent = "รหัสซ้ำ"; err.classList.remove("hidden"); return; }
+  const prereqVal = document.getElementById("cs-prereq").value;
+  const newId = Date.now();
+  const prereqIds = [];
+  if (prereqVal) {
+    if (hasCircular(newId, Number(prereqVal))) { err.textContent = "วงจรวนซ้ำ"; err.classList.remove("hidden"); return; }
+    prereqIds.push(Number(prereqVal));
+  }
+  err.classList.add("hidden");
+  courses.push({ course_id: newId, code, name_th: nameTh, credits, type: document.getElementById("cs-type").value, lecture_hours: credits, lab_hours: 0, self_study_hours: credits*2, prereq_ids: prereqIds, clos: [] });
+  saveData("m1c_courses", courses);
+  document.getElementById("cs-code").value = ""; document.getElementById("cs-name-th").value = ""; document.getElementById("cs-credits").value = "";
+  render();
+}
+
+function render() {
+  document.getElementById("cs-count").textContent = courses.length;
+  document.getElementById("cs-prereq").innerHTML = '<option value="">— ไม่มี —</option>' + courses.map((c) => `<option value="${c.course_id}">${c.code} — ${c.name_th}</option>`).join("");
+  document.getElementById("cs-rows").innerHTML = courses.map((c) => `
+    <tr class="border-t border-gray-100 hover:bg-gray-50">
+      <td class="px-4 py-3 font-mono">${c.code}</td><td class="px-4 py-3">${c.name_th}${(c.prereq_ids||[]).length ? `<div class="text-xs text-gray-400">บังคับก่อน: ${c.prereq_ids.map((id) => courses.find(x => x.course_id === id)?.code).join(", ")}</div>` : ""}</td>
+      <td class="px-4 py-3">${c.credits}</td><td class="px-4 py-3 text-gray-500">${TYPE_TH[c.type] || c.type}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap space-x-1">
+        <a href="page-clo.html?cid=${c.course_id}" class="text-violet-700 hover:bg-violet-50 rounded-lg px-2 py-1 text-xs">CLO</a>
+        <a href="page-tqf3.html?cid=${c.course_id}" class="text-violet-700 hover:bg-violet-50 rounded-lg px-2 py-1 text-xs">มคอ.3</a>
+        ${c.type === "COOP" ? `<a href="page-tqf4.html?cid=${c.course_id}" class="text-violet-700 hover:bg-violet-50 rounded-lg px-2 py-1 text-xs">มคอ.4</a>` : ""}
+      </td></tr>`).join("");
+}
+
+function init() { render(); notifyParentPage("courses"); }
+</script>
+</body>
+</html>

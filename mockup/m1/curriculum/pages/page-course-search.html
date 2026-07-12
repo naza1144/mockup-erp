@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · ค้นหารายวิชา</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 8. Course Search ═══ -->
+<div>
+  <a href="page-courses.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">ค้นหารายวิชา</h1>
+  <div class="flex gap-2 mb-4">
+    <input id="search-q" oninput="renderCourseSearch()" placeholder="ค้นหาชื่อ/รหัสวิชา..." class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64">
+    <select id="search-type" onchange="renderCourseSearch()" class="border border-gray-300 rounded-lg px-2 py-2 text-sm">
+      <option value="">ทุกประเภท</option><option value="LECTURE">บรรยาย</option><option value="PRACTICE">ปฏิบัติ</option>
+      <option value="SEMINAR">สัมมนา</option><option value="PROJECT">โครงงาน</option><option value="THESIS">วิทยานิพนธ์</option><option value="COOP">สหกิจ</option>
+    </select>
+  </div>
+  <div id="search-results" class="space-y-2"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let courses = loadData("m1c_courses", seedCourses);
+
+function renderCourseSearch() {
+  const q = (document.getElementById("search-q")?.value ?? "").toLowerCase();
+  const type = document.getElementById("search-type")?.value ?? "";
+  const list = courses.filter((c) => (!q || c.code.toLowerCase().includes(q) || c.name_th.includes(q)) && (!type || c.type === type));
+  document.getElementById("search-results").innerHTML = list.map((c) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+      <div><p class="text-sm font-semibold">${c.code} — ${c.name_th}</p><p class="text-xs text-gray-400">${c.credits} หน่วยกิต · ${TYPE_TH[c.type] || c.type}</p></div>
+      <a href="page-courses.html" class="text-violet-700 hover:bg-violet-50 rounded-lg px-2 py-1 text-xs">เลือก</a>
+    </div>`).join("") || `<p class="text-sm text-gray-400 text-center py-8">ไม่พบข้อมูล</p>`;
+}
+
+function init() { renderCourseSearch(); notifyParentPage("course-search"); }
+</script>
+</body>
+</html>

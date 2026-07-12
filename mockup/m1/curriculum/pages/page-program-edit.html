@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · แก้ไขหลักสูตร</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 2. Edit Program — UC-A1/A2/A3 (ตาม Data Design + TQF3) ═══ -->
+<div>
+  <a href="page-programs.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการหลักสูตร</a>
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">แก้ไขหลักสูตร</h1>
+    <div class="space-x-2">
+      <button onclick="goVersion()" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">จัดการเวอร์ชัน</button>
+      <button onclick="goPlo()" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">จัดการ PLO</button>
+      <button onclick="openTqf2()" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">สร้างเอกสาร มคอ.2</button>
+      <button onclick="submitForApproval()" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">ส่งขออนุมัติ</button>
+    </div>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+    <!-- แถว 1: program_code + name_th + name_en (ตาม Data Design: curriculum.program) -->
+    <div class="grid grid-cols-3 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">รหัสหลักสูตร (program_code)</label>
+        <input id="pf-program-code" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 font-mono"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ชื่อไทย (name_th)</label>
+        <input id="pf-name-th" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ชื่ออังกฤษ (name_en)</label>
+        <input id="pf-name-en" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+
+    <!-- แถว 2: level (BACHELOR|MASTER|DOCTORAL) + year + faculty_name + dept_id -->
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">ระดับ (level)</label>
+        <select id="pf-level" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="BACHELOR">ปริญญาตรี</option><option value="MASTER">ปริญญาโท</option><option value="DOCTORAL">ปริญญาเอก</option></select></div>
+      <div><label class="text-sm font-semibold text-gray-700">ปีที่เปิดใช้</label>
+        <input id="pf-year" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">คณะ (faculty_name)</label>
+        <input id="pf-faculty-name" placeholder="คณะวิทยาศาสตร์" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ภาควิชา (dept_id)</label>
+        <input id="pf-dept-id" placeholder="DEPT-SCI-CS" class="w-full font-mono text-xs border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+
+    <!-- แถว 3: total_credits + lecture_hours + lab_hours + self_study_hours (ตาม TQF3 §1.3) -->
+    <div class="grid grid-cols-4 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">หน่วยกิตรวม (total_credits)</label>
+        <input id="pf-total-credits" type="number" oninput="renderCreditStructure()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ชม.บรรยาย/สัปดาห์ (lecture_hours)</label>
+        <input id="pf-lecture-hours" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ชม.ปฏิบัติ/สัปดาห์ (lab_hours)</label>
+        <input id="pf-lab-hours" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ชม.ศึกษาด้วยตนเอง (self_study_hours)</label>
+        <input id="pf-self-hours" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+
+    <!-- แถว 4: program_category + coordinator (จาก TQF3 §1.6, §1.8) -->
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">ประเภทหลักสูตร</label>
+        <select id="pf-program-category" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="ปกติ">ปริญญาตรี ปกติ</option>
+          <option value="พิเศษ">ปริญญาตรี พิเศษ</option>
+          <option value="ต่อเนื่อง">ปริญญาตรี ต่อเนื่อง</option>
+          <option value="มหาบัณฑิต">ปริญญาโท</option>
+          <option value="ดุษฎีบัณฑิต">ปริญญาเอก</option>
+        </select></div>
+      <div><label class="text-sm font-semibold text-gray-700">อาจารย์ผู้รับผิดชอบหลักสูตร (coordinator)</label>
+        <input id="pf-coordinator" placeholder="ชื่อ-นามสกุล" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+
+    <!-- แถว 5: philosophy + objectives (จาก TQF2 §2.1) -->
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">ปรัชญาหลักสูตร (philosophy)</label>
+        <textarea id="pf-philosophy" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+      <div><label class="text-sm font-semibold text-gray-700">วัตถุประสงค์ (objectives)</label>
+        <textarea id="pf-objectives" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    </div>
+
+    <!-- แถว 6: location + created_date (จาก TQF3 §1.10-1.11) -->
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">สถานที่เรียน (location)</label>
+        <input id="pf-location" placeholder="คณะวิทยาศาสตร์ ม.อุบลราชธานี" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">วันที่จัดทำ (created_date)</label>
+        <input id="pf-created-date" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+
+    <p id="pf-error" class="text-xs text-red-600 hidden"></p>
+
+    <!-- โครงสร้างหน่วยกิต (credit_structure — UC-A2 / Data Design) -->
+    <div class="border-t border-gray-100 pt-4">
+      <p class="text-sm font-semibold mb-2">โครงสร้างหน่วยกิต (credit_structure) — UC-A2</p>
+      <div id="pf-credit-structure" class="space-y-2"></div>
+      <p class="text-xs mt-2">ผลรวมขั้นต่ำ: <span id="pf-credit-sum" class="font-semibold"></span> / <span id="pf-credit-total"></span></p>
+      <p id="pf-credit-error" class="text-xs text-red-600 hidden mt-1">SUM(min_credits) > total_credits (BR-M1A-001)</p>
+    </div>
+
+    <!-- TQF Domain (TQF Domain — UC-A3) -->
+    <div class="border-t border-gray-100 pt-4">
+      <p class="text-sm font-semibold mb-2">TQF Domain (UC-A3) — D1-D5</p>
+      <div id="pf-domains" class="space-y-2"></div>
+    </div>
+
+    <button onclick="saveProgram()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let programs = loadData("m1c_programs", seedPrograms);
+const pid = new URLSearchParams(location.search).get("pid");
+let curProgram = pid ? programs.find((p) => p.id === Number(pid)) : {
+  id: Date.now(), program_code: "", name_th: "", name_en: "", level: "BACHELOR", year: new Date().getFullYear() + 543, total_credits: 0,
+  faculty_name: "", dept_id: "", lecture_hours: 4, lab_hours: 0, self_study_hours: 8,
+  program_category: "ปกติ", coordinator: "", philosophy: "", objectives: "", created_date: "", location: "",
+  status: "DRAFT",
+  credit_structure: [
+    { category: "GENERAL_ED", min_credits: 0 },
+    { category: "CORE_REQUIRED", min_credits: 0 },
+    { category: "CORE_ELECTIVE", min_credits: 0 },
+    { category: "FREE_ELECTIVE", min_credits: 0 }
+  ],
+  tqf_domains: DOMAIN_NAMES.map((n) => ({ name: n, desc: "" })), plos: [], program_versions: [], plo_history: [], _isNew: true,
+};
+
+function populateForm() {
+  document.getElementById("pf-program-code").value = curProgram.program_code || "";
+  document.getElementById("pf-name-th").value = curProgram.name_th || "";
+  document.getElementById("pf-name-en").value = curProgram.name_en || "";
+  document.getElementById("pf-level").value = curProgram.level || "BACHELOR";
+  document.getElementById("pf-year").value = curProgram.year || "";
+  document.getElementById("pf-faculty-name").value = curProgram.faculty_name || "";
+  document.getElementById("pf-dept-id").value = curProgram.dept_id || "";
+  document.getElementById("pf-total-credits").value = curProgram.total_credits || 0;
+  document.getElementById("pf-lecture-hours").value = curProgram.lecture_hours ?? 4;
+  document.getElementById("pf-lab-hours").value = curProgram.lab_hours ?? 0;
+  document.getElementById("pf-self-hours").value = curProgram.self_study_hours ?? 8;
+  document.getElementById("pf-program-category").value = curProgram.program_category || "ปกติ";
+  document.getElementById("pf-coordinator").value = curProgram.coordinator || "";
+  document.getElementById("pf-philosophy").value = curProgram.philosophy || "";
+  document.getElementById("pf-objectives").value = curProgram.objectives || "";
+  document.getElementById("pf-created-date").value = curProgram.created_date || "";
+  document.getElementById("pf-location").value = curProgram.location || "";
+}
+function renderCreditStructure() {
+  const cs = curProgram.credit_structure || [];
+  document.getElementById("pf-credit-structure").innerHTML = cs.map((c) => {
+    const key = c.category;
+    return `<div class="flex items-center gap-2"><label class="text-sm w-32">${CATEGORY_TH[key] || key}</label>
+      <input type="number" id="cred-${key}" value="${c.min_credits}" oninput="updateCreditSum()" class="border border-gray-300 rounded-lg px-2 py-1 text-sm w-24"> หน่วยกิต</div>`;
+  }).join("");
+  updateCreditSum();
+}
+function updateCreditSum() {
+  const total = Number(document.getElementById("pf-total-credits").value || 0);
+  const cats = ["GENERAL_ED","CORE_REQUIRED","CORE_ELECTIVE","FREE_ELECTIVE"];
+  const sum = cats.reduce((s, cat) => s + Number(document.getElementById("cred-" + cat)?.value || 0), 0);
+  document.getElementById("pf-credit-sum").textContent = sum;
+  document.getElementById("pf-credit-total").textContent = total;
+  document.getElementById("pf-credit-error").classList.toggle("hidden", sum <= total);
+}
+function renderDomains() {
+  document.getElementById("pf-domains").innerHTML = (curProgram.tqf_domains || []).map((d, i) => `
+    <div class="flex items-center gap-2"><label class="text-sm w-64">${DOMAIN_CODES[i]} · ${d.name}</label>
+      <input id="dom-${i}" value="${d.desc}" placeholder="รายละเอียด" class="border border-gray-300 rounded-lg px-2 py-1 text-sm flex-1"></div>`).join("");
+}
+function saveProgram() {
+  const code = document.getElementById("pf-program-code").value.trim();
+  const err = document.getElementById("pf-error");
+  const dup = programs.some((p) => p.program_code === code && p.id !== curProgram.id);
+  if (!code) { err.textContent = "กรอกรหัสหลักสูตร"; err.classList.remove("hidden"); return; }
+  if (dup) { err.textContent = "รหัสซ้ำ (Alternative Flow UC-A1)"; err.classList.remove("hidden"); return; }
+  const total = Number(document.getElementById("pf-total-credits").value || 0);
+  const cats = ["GENERAL_ED","CORE_REQUIRED","CORE_ELECTIVE","FREE_ELECTIVE"];
+  const sum = cats.reduce((s, cat) => s + Number(document.getElementById("cred-" + cat)?.value || 0), 0);
+  if (sum > total) { err.textContent = "SUM(min_credits) > total_credits (BR-M1A-001)"; err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  curProgram.program_code = code;
+  curProgram.name_th = document.getElementById("pf-name-th").value;
+  curProgram.name_en = document.getElementById("pf-name-en").value;
+  curProgram.level = document.getElementById("pf-level").value;
+  curProgram.year = Number(document.getElementById("pf-year").value);
+  curProgram.faculty_name = document.getElementById("pf-faculty-name").value;
+  curProgram.dept_id = document.getElementById("pf-dept-id").value;
+  curProgram.total_credits = total;
+  curProgram.lecture_hours = Number(document.getElementById("pf-lecture-hours").value || 0);
+  curProgram.lab_hours = Number(document.getElementById("pf-lab-hours").value || 0);
+  curProgram.self_study_hours = Number(document.getElementById("pf-self-hours").value || 0);
+  curProgram.program_category = document.getElementById("pf-program-category").value;
+  curProgram.coordinator = document.getElementById("pf-coordinator").value;
+  curProgram.philosophy = document.getElementById("pf-philosophy").value;
+  curProgram.objectives = document.getElementById("pf-objectives").value;
+  curProgram.created_date = document.getElementById("pf-created-date").value;
+  curProgram.location = document.getElementById("pf-location").value;
+  cats.forEach((cat) => {
+    const cs = curProgram.credit_structure.find((c) => c.category === cat);
+    if (cs) cs.min_credits = Number(document.getElementById("cred-" + cat).value || 0);
+  });
+  curProgram.tqf_domains.forEach((d, i) => d.desc = document.getElementById("dom-" + i)?.value ?? d.desc);
+  if (curProgram._isNew) { delete curProgram._isNew; programs.push(curProgram); }
+  saveData("m1c_programs", programs);
+  alert("บันทึกหลักสูตรแล้ว"); location.href = "page-programs.html";
+}
+function guardSaved() {
+  if (curProgram._isNew) { alert("กรุณาบันทึกหลักสูตรก่อน"); return false; }
+  return true;
+}
+function goVersion() { if (!guardSaved()) return; location.href = "page-version.html?pid=" + curProgram.id; }
+function goPlo() { if (!guardSaved()) return; location.href = "page-plo.html?pid=" + curProgram.id; }
+function openTqf2() { if (!guardSaved()) return; location.href = "page-tqf2.html?pid=" + curProgram.id; }
+function submitForApproval() {
+  if (!guardSaved()) return;
+  curProgram.status = "IN_REVIEW"; saveData("m1c_programs", programs);
+  location.href = "page-approve-program.html?pid=" + curProgram.id;
+}
+
+function init() { populateForm(); renderCreditStructure(); renderDomains(); notifyParentPage("program-edit"); }
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 บริษัท · ประเมินสหกิจ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ CompanyEval — UC-17 ═══ -->
+<div class="max-w-2xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">ประเมินสหกิจ — <span id="ev-student-name" class="text-amber-700"></span></h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-md space-y-3">
+    <div><label class="text-sm font-semibold text-gray-700">สมรรถนะ (0-100)</label><input id="ev-competence" type="number" min="0" max="100" oninput="updateEvalTotal()" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div><label class="text-sm font-semibold text-gray-700">ทัศนคติ (0-100)</label><input id="ev-attitude" type="number" min="0" max="100" oninput="updateEvalTotal()" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div><label class="text-sm font-semibold text-gray-700">ผลงาน (0-100)</label><input id="ev-quality" type="number" min="0" max="100" oninput="updateEvalTotal()" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <p class="text-sm font-semibold">คะแนนรวมเฉลี่ย: <span id="ev-total">0</span> / 100</p>
+    <div><label class="text-sm font-semibold text-gray-700">จุดเด่น</label><textarea id="ev-strengths" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">ความเห็น/ข้อเสนอแนะ</label><textarea id="ev-comments" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <p id="ev-error" class="text-xs text-red-600 hidden">กรอกคะแนนทั้ง 3 หัวข้อให้ครบก่อนบันทึก</p>
+    <button onclick="saveEvaluation()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_co_students", seedStudents);
+const curStudentId = Number(new URLSearchParams(location.search).get("id"));
+let curStudent = students.find((s) => s.id === curStudentId);
+
+/* ═══ UC-17 — ประเมินสหกิจจากบริษัท ═══ */
+function updateEvalTotal() {
+  const c = Number(document.getElementById("ev-competence").value || 0), a = Number(document.getElementById("ev-attitude").value || 0), q = Number(document.getElementById("ev-quality").value || 0);
+  document.getElementById("ev-total").textContent = Math.round((c + a + q) / 3 * 100) / 100;
+}
+function saveEvaluation() {
+  const c = document.getElementById("ev-competence").value, a = document.getElementById("ev-attitude").value, q = document.getElementById("ev-quality").value;
+  const err = document.getElementById("ev-error");
+  if (c === "" || a === "" || q === "") { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  const total = Math.round((Number(c) + Number(a) + Number(q)) / 3 * 100) / 100;
+  /* ระบบจริง: POST /companies/me/evaluations */
+  curStudent.evaluation = { competence: Number(c), attitude: Number(a), quality: Number(q), total, strengths: document.getElementById("ev-strengths").value, comments: document.getElementById("ev-comments").value, ackStatus: "UNREAD", canEdit: true };
+  saveData("m8_co_students", students);
+  alert("บันทึกผลประเมินสำเร็จ — สามารถแก้ไขได้จนกว่าอาจารย์จะรับทราบ"); window.location.href = "page-list.html";
+}
+
+function init() {
+  if (curStudent) document.getElementById("ev-student-name").textContent = curStudent.name;
+  notifyParentPage("eval");
+}
+</script>
+</body>
+</html>

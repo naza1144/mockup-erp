@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 · โครงงาน/วิทยานิพนธ์ (นักศึกษา) — Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } html, body { height: 100%; margin: 0; } iframe { border: 0; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<div class="flex flex-col h-screen">
+  <header class="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10 shrink-0">
+    <div class="flex items-center gap-3">
+      <a href="../../main%20page/index.html" class="text-sm text-gray-500 hover:text-gray-700">← กลับหน้าหลัก</a>
+      <span class="w-7 h-7 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center font-bold text-xs">M9</span>
+      <span class="font-semibold text-sm">ERP บริหารหลักสูตร · โครงงาน/วิทยานิพนธ์ (นักศึกษา)</span>
+    </div>
+    <span class="text-xs text-gray-500">เข้าสู่ระบบในฐานะ: <span class="font-semibold text-gray-700">นักศึกษา</span></span>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+    <nav class="w-56 bg-white border-r border-gray-200 p-3 shrink-0 space-y-0.5 overflow-y-auto">
+      <p class="px-2 py-1 text-[11px] uppercase tracking-wide text-gray-400">เมนู</p>
+      <a id="menu-topic" data-page="topic" href="pages/page-topic.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">เสนอหัวข้อโครงงาน/วิทยานิพนธ์</a>
+      <a data-page="milestone" href="pages/page-milestone.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">โครงงานของฉัน</a>
+      <a data-page="topic-history" href="pages/page-topic-history.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">ประวัติการเปลี่ยนหัวข้อ</a>
+      <a data-page="repository" href="pages/page-repository.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">ค้นหาคลังวิทยานิพนธ์</a>
+      <a data-page="schedule-view" href="pages/page-schedule-view.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">ดูแผนการสอบ</a>
+    </nav>
+
+    <iframe id="main-frame" name="main-frame" src="pages/page-topic.html" class="flex-1 w-full h-full"></iframe>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+/* ═══ Shell router: ไฮไลต์เมนูตามหน้าที่ iframe แจ้งมา + ซ่อนเมนู "เสนอหัวข้อ" ถ้ามีหัวข้อ active อยู่แล้ว ═══ */
+function setActiveMenu(pageKey) {
+  document.querySelectorAll(".menu-link").forEach((el) => {
+    const on = el.dataset.page === pageKey;
+    el.classList.toggle("bg-pink-50", on); el.classList.toggle("text-pink-700", on); el.classList.toggle("font-semibold", on);
+  });
+}
+function refreshMenuVisibility() {
+  const thesis = loadData("m9_st_thesis", null);
+  document.getElementById("menu-topic").classList.toggle("hidden", !!(thesis && ["SUBMITTED", "APPROVED"].includes(thesis.status)));
+}
+window.addEventListener("message", (ev) => {
+  if (ev.data && ev.data.type === "m9-student-page") { setActiveMenu(ev.data.page); refreshMenuVisibility(); }
+});
+refreshMenuVisibility();
+
+/* หัวข้อแรกเข้า: ถ้ามีหัวข้ออยู่แล้วให้เปิดหน้า milestone (หรือ repository ถ้าส่งเล่มแล้ว) แทน topic */
+(function chooseInitialPage() {
+  const thesis = loadData("m9_st_thesis", null);
+  let page = "topic";
+  if (thesis && thesis.status !== "REJECTED") page = thesis.finalDoc ? "repository" : "milestone";
+  document.getElementById("main-frame").src = `pages/page-${page}.html`;
+})();
+</script>
+</body>
+</html>

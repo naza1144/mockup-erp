@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 ผู้สมัคร · ติดตามสถานะใบสมัคร</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800" onload="init()">
+
+<main class="max-w-2xl mx-auto p-6">
+  <!-- ═══ StatusTracker ═══ -->
+  <h1 class="text-2xl font-bold mb-4">ติดตามสถานะใบสมัคร</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+    <p class="text-sm mb-4">ผู้สมัคร: <span id="st-name" class="font-semibold"></span> · เลขที่ใบสมัคร <span id="st-ref" class="font-mono"></span></p>
+    <ol id="st-steps" class="space-y-3"></ol>
+  </div>
+  <p class="text-xs text-gray-400 mt-4">
+    หมายเหตุ: สถานะจะอัปเดตจริงเมื่อกรรมการสัมภาษณ์บันทึกผลใน Online/Onsite Interview App (คนละแอป) —
+    ปุ่มด้านล่างจำลองความคืบหน้าเพื่อสาธิตเท่านั้น
+  </p>
+  <button onclick="advanceStage()" class="mt-3 text-sm text-green-700 hover:bg-green-50 rounded-lg px-3 py-1.5 border border-green-200">▶ จำลองความคืบหน้า (ถัดไป)</button>
+</main>
+
+<script src="../shared.js"></script>
+<script>
+let app = loadData("m4_ap_application", null);
+
+function advanceStage() {
+  if (!app) return;
+  if (app.stage === "APPLIED") app.stage = "INTERVIEW_SCHEDULED";
+  else if (app.stage === "INTERVIEW_SCHEDULED") app.stage = Math.random() > 0.3 ? "PASSED" : "FAILED";
+  saveData("m4_ap_application", app); render();
+}
+
+function render() {
+  if (!app) return;
+  document.getElementById("st-name").textContent = app.name;
+  document.getElementById("st-ref").textContent = app.ref;
+  const isResult = app.stage === "PASSED" || app.stage === "FAILED";
+  const curIdx = isResult ? 2 : STAGE_ORDER.indexOf(app.stage);
+  document.getElementById("st-steps").innerHTML = STAGE_ORDER.map((s, i) => {
+    const label = s === "RESULT" ? (isResult ? STAGE_TH[app.stage] : "รอผลสัมภาษณ์") : STAGE_TH[s];
+    const isFail = s === "RESULT" && app.stage === "FAILED";
+    const active = i <= curIdx && (s !== "RESULT" || isResult);
+    return `<li class="flex items-center gap-3 text-sm">
+      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold
+        ${active ? (isFail ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700") : "bg-gray-100 text-gray-400"}">${active ? "✓" : i + 1}</span>
+      <span class="${active ? "text-gray-800" : "text-gray-400"}">${label}</span>
+    </li>`;
+  }).join("");
+}
+
+function init() { render(); notifyParentPage("status"); }
+</script>
+</body>
+</html>

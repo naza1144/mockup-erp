@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · ตัวอย่างเอกสาร</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ DocumentPreview — ดูตัวอย่างเอกสารที่นักศึกษาส่ง ═══ -->
+<div>
+  <a href="page-milestone-approve.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">ตัวอย่างเอกสาร</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <div id="dp-meta" class="text-sm space-y-1"></div>
+    <div class="border border-gray-300 rounded-lg p-6 bg-gray-50 text-center">
+      <p class="text-gray-400 text-sm">📄 ตัวอย่างเอกสาร (จำลอง)</p>
+      <p id="dp-filename" class="text-sm font-semibold mt-2"></p>
+      <p class="text-xs text-gray-400 mt-1">ระบบจริง: แสดง preview จาก MinIO presigned URL (bucket: thesis-files) · ไฟล์ PDF/DOCX</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="alert('ดาวน์โหลดเอกสาร (จำลอง presigned URL จาก MinIO)')" class="bg-gray-100 hover:bg-gray-200 text-sm rounded-lg px-3 py-1.5 border border-gray-300">📥 ดาวน์โหลด</button>
+      <a href="page-milestone-approve.html" class="bg-pink-600 hover:bg-pink-700 text-white text-sm rounded-lg px-3 py-1.5">ปิด</a>
+    </div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+const theses = loadData("m9_sc_theses", seedTheses);
+const qs = new URLSearchParams(location.search);
+const target = theses.find((x) => x.id === Number(qs.get("tid")));
+const docIdx = Number(qs.get("doc"));
+
+function init() {
+  const d = (target?.documents || [])[docIdx];
+  if (d) {
+    document.getElementById("dp-meta").innerHTML = `
+      <p><span class="font-semibold">นักศึกษา:</span> ${target.student}</p>
+      <p><span class="font-semibold">หัวข้อ:</span> ${target.title}</p>
+      <p><span class="font-semibold">ประเภทเอกสาร:</span> ${d.doc_type} · version ${d.version}</p>
+      <p><span class="font-semibold">อัปโหลดเมื่อ:</span> ${new Date(d.uploaded_at).toLocaleString("th-TH")}</p>
+      <p><span class="font-semibold">ขนาดไฟล์:</span> ${(d.file_size_bytes / 1024 / 1024).toFixed(1)} MB · ${d.mime_type}</p>
+      <p><span class="font-semibold">สถานะ:</span> ${d.status === "APPROVED" ? "✅ อนุมัติแล้ว" : d.status === "REJECTED" ? "❌ ถูกตีกลับ" : "⏳ รอตรวจ"}</p>`;
+    document.getElementById("dp-filename").textContent = d.original_filename;
+  }
+  notifyParentPage("doc-preview");
+}
+</script>
+</body>
+</html>

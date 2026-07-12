@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · สรุปผลสอบจบ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ SummarizeResult — UC-18 ═══ -->
+<div>
+  <a href="page-topics.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการหัวข้อ</a>
+  <h1 class="text-2xl font-bold mb-4">สรุปผลสอบจบ</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-sm">หัวข้อ: <span id="sum-title" class="font-semibold"></span></p>
+    <p class="text-xs text-gray-500 mb-2">BR-M9-005: เฉพาะ CHAIR เท่านั้นที่ตั้ง <code>defense.result</code> ได้ — ต้องรวบรวมคะแนนจากทุก member ก่อน</p>
+    <div id="sum-scores" class="text-sm space-y-1"></div>
+    <p class="text-sm font-semibold">คะแนนรวมเฉลี่ย: <span id="sum-avg"></span></p>
+    <div><label class="text-sm font-semibold text-gray-700">ผลสรุป · <code>defense.result</code></label>
+      <select id="sum-decision" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="PASS">ผ่าน (PASS)</option><option value="PASS_WITH_REVISION">แก้ไขก่อนส่งเล่ม (PASS_WITH_REVISION)</option><option value="FAIL">ไม่ผ่าน (FAIL)</option>
+      </select></div>
+    <button onclick="confirmSummary()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ยืนยันผลสรุป (CHAIR only)</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let theses = loadData("m9_sc_theses", seedTheses);
+const qs = new URLSearchParams(location.search);
+const tid = Number(qs.get("tid"));
+const idx = Number(qs.get("idx"));
+const target = theses.find((x) => x.id === tid);
+
+function confirmSummary() {
+  const chairId = Object.entries(target.committeeRoles || {}).find(([, r]) => r === "CHAIR");
+  if (!chairId || Number(chairId[0]) !== ME_INSTRUCTOR_ID) { alert("Alternative Flow BR-M9-005: เฉพาะ CHAIR เท่านั้นที่ตั้ง defense.result ได้"); return; }
+  const d = target.defenses[idx];
+  const decision = document.getElementById("sum-decision").value;
+  d.result = decision; d.due = false; d.status = "COMPLETED";
+  if (decision === "PASS") target.status = "COMPLETED";
+  else if (decision === "FAIL") target.status = "REJECTED";
+  saveData("m9_sc_theses", theses);
+  if (decision === "PASS") alert("สรุปผลแล้ว: PASS — publish thesis.passed event ไปยัง M4 · Student Registry (จำลอง)");
+  else if (decision === "PASS_WITH_REVISION") alert("สรุปผลแล้ว: PASS_WITH_REVISION — แจ้งนักศึกษาให้แก้ไขก่อนดำเนินการส่งเล่ม");
+  else alert("สรุปผลแล้ว: FAIL — thesis.status → REJECTED, แจ้งนักศึกษาและที่ปรึกษา");
+  window.location.href = "page-topics.html";
+}
+
+function init() {
+  const d = target.defenses[idx];
+  document.getElementById("sum-title").textContent = target.title;
+  document.getElementById("sum-scores").innerHTML = Object.entries(d.scores).map(([id, s]) => `<p>${instrName(Number(id))}: ${s.total} คะแนน</p>`).join("");
+  const avg = Object.values(d.scores).reduce((s, x) => s + x.total, 0) / (Object.values(d.scores).length || 1);
+  document.getElementById("sum-avg").textContent = Math.round(avg * 100) / 100;
+  notifyParentPage("summary");
+}
+</script>
+</body>
+</html>

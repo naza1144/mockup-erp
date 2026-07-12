@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M10 · Traefik Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; background: #0f1923; color: #e0e0e0; }
+    .card { background: #1a2634; border: 1px solid #2a3a4a; border-radius: 8px; }
+    .card-header { border-bottom: 1px solid #2a3a4a; padding: 12px 16px; font-weight: 600; font-size: 13px; color: #8b9dc3; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card-body { padding: 12px 16px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: #fff; }
+    .stat-label { font-size: 11px; color: #8b9dc3; text-transform: uppercase; }
+    .badge-green { background: #1a3a2a; color: #4ade80; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .badge-red { background: #3a1a1a; color: #f87171; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .badge-blue { background: #1a2a3a; color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .badge-amber { background: #3a2a1a; color: #fbbf24; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .row-hover:hover { background: #1e2d3d; }
+    .sidebar-item { padding: 8px 16px; font-size: 13px; color: #8b9dc3; cursor: pointer; border-left: 3px solid transparent; }
+    .sidebar-item:hover { background: #1a2634; color: #fff; }
+    .sidebar-item.active { background: #1a2634; color: #fff; border-left-color: #4ade80; }
+    .sidebar-section { font-size: 10px; color: #5a6a7a; text-transform: uppercase; padding: 16px 16px 4px; letter-spacing: 1px; }
+    table { width: 100%; font-size: 12px; border-collapse: collapse; }
+    th { text-align: left; padding: 8px 12px; color: #8b9dc3; font-weight: 500; border-bottom: 1px solid #2a3a4a; }
+    td { padding: 8px 12px; border-bottom: 1px solid #1e2d3d; }
+  </style>
+</head>
+<body>
+  <div class="flex h-screen">
+    <!-- Sidebar style Traefik -->
+    <div class="w-56 shrink-0 p-0" style="background:#0f1923;border-right:1px solid #2a3a4a;">
+      <div class="p-4" style="border-bottom:1px solid #2a3a4a;">
+        <div class="text-white font-bold text-lg">Traefik</div>
+        <div style="color:#8b9dc3;font-size:12px;">API Gateway · v3.0</div>
+      </div>
+      <div class="sidebar-section">Overview</div>
+      <div class="sidebar-item active" onclick="switchTab('overview')">Dashboard</div>
+      <div class="sidebar-section">HTTP</div>
+      <div class="sidebar-item" onclick="switchTab('routers')">Routers</div>
+      <div class="sidebar-item" onclick="switchTab('services')">Services</div>
+      <div class="sidebar-item" onclick="switchTab('middlewares')">Middlewares</div>
+      <div class="sidebar-section">System</div>
+      <div class="sidebar-item" onclick="switchTab('providers')">Providers</div>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 p-6 overflow-y-auto">
+      <!-- Overview Tab -->
+      <div id="view-overview">
+      <p style="color:#60a5fa;font-size:12px;" class="mb-1">UC-21 (Traefik Middleware) — API Gateway รวมศูนย์: JWT ForwardAuth, Rate Limit, CORS, StripPrefix</p>
+        <h1 class="text-2xl font-bold text-white mb-1">Traefik Dashboard</h1>
+        <p style="color:#8b9dc3;" class="text-sm mb-6">API Gateway — ERP บริหารหลักสูตร</p>
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="card p-4"><div class="stat-value">8</div><div class="stat-label">HTTP Routers</div></div>
+          <div class="card p-4"><div class="stat-value">8</div><div class="stat-label">HTTP Services</div></div>
+          <div class="card p-4"><div class="stat-value">4</div><div class="stat-label">Middlewares</div></div>
+          <div class="card p-4"><div class="stat-value">1</div><div class="stat-label">Providers</div></div>
+        </div>
+        <div class="card mb-6">
+          <div class="card-header">Provider Information</div>
+          <div class="card-body text-sm space-y-2">
+            <div class="flex justify-between"><span style="color:#8b9dc3">Provider</span><span>Kubernetes (CRD)</span></div>
+            <div class="flex justify-between"><span style="color:#8b9dc3">Namespace</span><span>erp-traefik</span></div>
+            <div class="flex justify-between"><span style="color:#8b9dc3">Version</span><span>v3.0.0</span></div>
+            <div class="flex justify-between"><span style="color:#8b9dc3">Uptime</span><span>60d 10h 23m</span></div>
+          </div>
+        </div>
+        <div class="card"><div class="card-header">HTTP Routers</div><div class="card-body p-0"><table><thead><tr><th>Name</th><th>Rule</th><th>Middleware</th><th>Service</th><th>Status</th></tr></thead><tbody id="router-table"></tbody></table></div></div>
+      </div>
+
+      <!-- Routers Tab -->
+      <div id="view-routers" class="hidden">
+        <h1 class="text-2xl font-bold text-white mb-4">HTTP Routers</h1>
+        <div class="card"><div class="card-header">All Routers (8)</div><div class="card-body p-0"><table><thead><tr><th>Name</th><th>Rule</th><th>Middleware</th><th>Service</th><th>TLS</th><th>Status</th></tr></thead><tbody id="router-table-full"></tbody></table></div></div>
+      </div>
+
+      <!-- Services Tab -->
+      <div id="view-services" class="hidden">
+        <h1 class="text-2xl font-bold text-white mb-4">HTTP Services</h1>
+        <div class="card"><div class="card-header">All Services (8)</div><div class="card-body p-0"><table><thead><tr><th>Name</th><th>Type</th><th>Load Balancer</th><th>Servers</th><th>Status</th></tr></thead><tbody id="service-table"></tbody></table></div></div>
+      </div>
+
+      <!-- Middlewares Tab -->
+      <div id="view-middlewares" class="hidden">
+        <h1 class="text-2xl font-bold text-white mb-4">Middlewares</h1>
+        <div class="card"><div class="card-header">All Middlewares (4)</div><div class="card-body p-0"><table><thead><tr><th>Name</th><th>Type</th><th>Configuration</th><th>Status</th></tr></thead><tbody id="middleware-table"></tbody></table></div></div>
+      </div>
+
+      <!-- Providers Tab -->
+      <div id="view-providers" class="hidden">
+        <h1 class="text-2xl font-bold text-white mb-4">Providers</h1>
+        <div class="card"><div class="card-header">Provider List</div>
+          <div class="card-body text-sm space-y-3">
+            <div class="flex items-center gap-3 p-3 row-hover rounded">
+              <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
+              <span class="font-semibold text-white">Kubernetes (CRD)</span>
+              <span style="color:#8b9dc3">namespace: erp-traefik</span>
+              <span class="badge-green">✅ Connected</span>
+            </div>
+            <div style="color:#8b9dc3;font-size:12px;" class="p-3">Provider type: Kubernetes CRD<br>Last sync: 12 seconds ago<br>Watched: IngressRoute, Middleware, TraefikService</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared.js"></script>
+  <script>
+    const ROUTERS = [
+      { name:"m0-identity",   rule:"Host(`erp.ubu.ac.th`) && PathPrefix(`/m0`)",  mid:"rate-limit, jwt-auth",  svc:"m0-service",  tls:"✅", st:"up" },
+      { name:"m1-curriculum", rule:"Host(`erp.ubu.ac.th`) && PathPrefix(`/m1`)",  mid:"rate-limit, jwt-auth",  svc:"m1-service",  tls:"✅", st:"up" },
+      { name:"m3-faculty",    rule:"Host(`erp.ubu.ac.th`) && PathPrefix(`/m3`)",  mid:"rate-limit, jwt-auth",  svc:"m3-service",  tls:"✅", st:"up" },
+      { name:"m4-registry",   rule:"Host(`erp.ubu.ac.th`) && PathPrefix(`/m4`)",  mid:"rate-limit, jwt-auth",  svc:"m4-service",  tls:"✅", st:"up" },
+      { name:"m8-coop",       rule:"Host(`erp.ubu.ac.th`) && PathPrefix(`/m8`)",  mid:"rate-limit, jwt-auth",  svc:"m8-service",  tls:"✅", st:"up" },
+      { name:"m9-thesis",     rule:"Host(`erp.ubu.ac.th`) && PathPrefix(`/m9`)",  mid:"rate-limit, jwt-auth",  svc:"m9-service",  tls:"✅", st:"down" },
+      { name:"m10-platform",  rule:"Host(`erp.ubu.ac.th`) && PathPrefix(`/m10`)", mid:"admin-auth",            svc:"m10-service", tls:"✅", st:"up" },
+      { name:"keycloak-auth", rule:"Host(`auth.erp.ubu.ac.th`)",                   mid:"rate-limit",            svc:"keycloak",    tls:"✅", st:"up" },
+    ];
+    const SERVICES = [
+      { n:"m0-service",t:"LoadBalancer",lb:"roundRobin",s:"3/3",st:"up"},{n:"m1-service",t:"LoadBalancer",lb:"roundRobin",s:"2/2",st:"up"},
+      { n:"m3-service",t:"LoadBalancer",lb:"roundRobin",s:"2/2",st:"up"},{n:"m4-service",t:"LoadBalancer",lb:"roundRobin",s:"1/2",st:"degraded"},
+      { n:"m8-service",t:"LoadBalancer",lb:"roundRobin",s:"2/2",st:"up"},{n:"m9-service",t:"LoadBalancer",lb:"roundRobin",s:"0/2",st:"down"},
+      { n:"m10-service",t:"LoadBalancer",lb:"roundRobin",s:"2/2",st:"up"},{n:"keycloak",t:"LoadBalancer",lb:"roundRobin",s:"3/3",st:"up"},
+    ];
+    const MIDS = [
+      { n:"rate-limit",t:"RateLimit",c:"100 req/s, burst 200"},{n:"jwt-auth",t:"ForwardAuth",c:"ForwardAuth → Keycloak"},
+      { n:"cors-policy",t:"Headers",c:"AllowedOrigins: erp.ubu.ac.th"},{n:"admin-auth",t:"ForwardAuth",c:"ForwardAuth → Keycloak (admin)"},
+    ];
+    const stBadge = {up:"badge-green",down:"badge-red",degraded:"badge-amber"};
+    const stText = {up:"✅ UP",down:"🔴 DOWN",degraded:"🟡 DEGRADED"};
+
+    function init(){
+      notifyParentPage("traefik");
+      document.getElementById("router-table").innerHTML = ROUTERS.map(r=>`<tr class="row-hover"><td class="font-mono text-white">${r.name}</td><td style="color:#8b9dc3">${r.rule}</td><td><span class="badge-blue">${r.mid}</span></td><td class="font-mono">${r.svc}</td><td><span class="${stBadge[r.st]}">${stText[r.st]}</span></td></tr>`).join("");
+      document.getElementById("router-table-full").innerHTML = ROUTERS.map(r=>`<tr class="row-hover"><td class="font-mono text-white">${r.name}</td><td style="color:#8b9dc3">${r.rule}</td><td><span class="badge-blue">${r.mid}</span></td><td class="font-mono">${r.svc}</td><td>${r.tls}</td><td><span class="${stBadge[r.st]}">${stText[r.st]}</span></td></tr>`).join("");
+      document.getElementById("service-table").innerHTML = SERVICES.map(s=>`<tr class="row-hover"><td class="font-mono text-white">${s.n}</td><td>${s.t}</td><td style="color:#8b9dc3">${s.lb}</td><td>${s.s}</td><td><span class="${stBadge[s.st]}">${stText[s.st]}</span></td></tr>`).join("");
+      document.getElementById("middleware-table").innerHTML = MIDS.map(m=>`<tr class="row-hover"><td class="font-mono text-white">${m.n}</td><td><span class="badge-blue">${m.t}</span></td><td style="color:#8b9dc3">${m.c}</td><td><span class="badge-green">✅ Active</span></td></tr>`).join("");
+    }
+    function switchTab(tab){document.querySelectorAll('[id^="view-"]').forEach(e=>e.classList.add('hidden'));document.getElementById('view-'+tab).classList.remove('hidden');}
+    init();
+  </script>
+</body>
+</html>

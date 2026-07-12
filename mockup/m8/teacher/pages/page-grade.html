@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · ประเมินจากอาจารย์นิเทศ + ส่งเกรด</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 12. SupervisorGrade — UC-20/21/22 ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">ประเมินจากอาจารย์นิเทศ + ส่งเกรด</h1>
+  <select id="grade-student-select" onchange="selectGradeStudent(this.value)" class="border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4"></select>
+  <div id="grade-content" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-3"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_tc_students", seedStudents);
+let curGradeStudent = null;
+
+/* ═══ UC-20/21/22 — ประเมินอาจารย์นิเทศ + คำนวณเกรด + ส่ง M4 ═══ */
+function selectGradeStudent(id) { curGradeStudent = students.find((s) => s.id == id); render(); }
+function saveAdvisorScore() {
+  const report = Number(document.getElementById("gr-report-score").value); const pres = Number(document.getElementById("gr-presentation-score").value);
+  curGradeStudent.application.evaluation.advisor = { reportScore: report, presentationScore: pres };
+  saveData("m8_tc_students", students); render();
+}
+function computeGrade(app) {
+  const emp = app.evaluation?.employer; const adv = app.evaluation?.advisor;
+  if (!emp || emp.ackStatus !== "ACKNOWLEDGED" || !adv) return null;
+  /* ระบบจริง: น้ำหนัก % ตกลงกับ Curriculum — ตัวอย่างนี้ใช้ บริษัท 50% + อาจารย์นิเทศ 50% */
+  const advisorAvg = (adv.reportScore + adv.presentationScore) / 2;
+  const finalScore = Math.round((emp.total * 0.5 + advisorAvg * 0.5) * 100) / 100;
+  let letter = "F"; if (finalScore >= 80) letter = "A"; else if (finalScore >= 70) letter = "B"; else if (finalScore >= 60) letter = "C"; else if (finalScore >= 50) letter = "D";
+  return { finalScore, letter, pass: finalScore >= 50 };
+}
+function confirmSendGrade() {
+  const grade = computeGrade(curGradeStudent.application);
+  curGradeStudent.application.grade = grade;
+  saveData("m8_tc_students", students);
+  alert(`ส่งผลสำเร็จ — เกรด ${grade.letter} (${grade.finalScore} คะแนน, ${grade.pass ? "Pass" : "Fail"}) — publish event coop.completed ไปยัง M4 (จำลอง)`);
+  render();
+}
+
+function render() {
+  const gradeCandidates = students.filter((s) => s.application?.evaluation?.employer?.ackStatus === "ACKNOWLEDGED");
+  document.getElementById("grade-student-select").innerHTML = `<option value="">— เลือกนักศึกษา —</option>` + gradeCandidates.map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+  if (curGradeStudent) {
+    const app = curGradeStudent.application; const adv = app.evaluation.advisor; const computed = computeGrade(app);
+    document.getElementById("grade-content").innerHTML = `
+      <p class="text-sm">คะแนนจากบริษัท: <span class="font-semibold">${app.evaluation.employer.total}</span> / 100</p>
+      <div><label class="text-sm font-semibold text-gray-700">คะแนนรายงาน (0-100)</label><input id="gr-report-score" type="number" value="${adv?.reportScore ?? ""}" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">คะแนนการนำเสนอ (0-100)</label><input id="gr-presentation-score" type="number" value="${adv?.presentationScore ?? ""}" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <button onclick="saveAdvisorScore()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกคะแนน</button>
+      ${computed ? `<p class="text-sm font-semibold pt-2 border-t border-gray-100">เกรดคำนวณ: ${computed.finalScore} คะแนน (${computed.letter}) — ${computed.pass ? "Pass" : "Fail"}</p>
+        <button onclick="confirmSendGrade()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ยืนยันส่งเกรด</button>` : `<p class="text-xs text-gray-400">รอกรอกคะแนนอาจารย์นิเทศให้ครบก่อนคำนวณเกรด</p>`}
+      ${app.grade ? `<p class="text-xs text-green-700">ส่งเกรดแล้ว: ${app.grade.letter} (${app.grade.finalScore})</p>` : ""}`;
+  }
+}
+
+function init() {
+  if (!enforceRole(["supervisor"])) return;
+  render();
+  notifyParentPage("grade");
+}
+</script>
+</body>
+</html>

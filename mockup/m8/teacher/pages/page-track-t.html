@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · ติดตามสถานะ Placement</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 7. TrackPlacementT — UC-11 (มุมมองอาจารย์) ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">ติดตามสถานะ Placement</h1>
+  <select id="tkt-student-select" onchange="selectTrackStudent(this.value)" class="border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4"></select>
+  <div id="tkt-content" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-3"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_tc_students", seedStudents);
+let companies = loadData("m8_tc_companies", seedCompanies);
+let curTrackStudent = null;
+
+/* ═══ UC-11 (teacher view) ═══ */
+function selectTrackStudent(id) { curTrackStudent = students.find((s) => s.id == id); render(); }
+
+/* ═══ UC-12 — มอบหมายอาจารย์นิเทศ ═══ */
+function openAssignSupervisor(id) { window.location.href = "page-assign-supervisor.html?student=" + id; }
+
+/* ═══ UC-13 — บันทึกการนิเทศ ═══ */
+function openSupervisionVisit(id) { window.location.href = "page-supervision-visit.html?student=" + id; }
+
+function render() {
+  const withApp = students.filter((s) => s.application);
+  document.getElementById("tkt-student-select").innerHTML = `<option value="">— เลือกนักศึกษา —</option>` + withApp.map((s) => `<option value="${s.id}" ${curTrackStudent?.id === s.id ? "selected" : ""}>${s.name} (${s.code})</option>`).join("");
+  if (curTrackStudent) {
+    const app = curTrackStudent.application; const isBranch = ["REJECTED", "CANCELLED"].includes(app.status);
+    const supervisorName = mockInstructors.find((i) => i.id === app.supervisorId)?.name;
+    document.getElementById("tkt-content").innerHTML = `
+      <p class="text-sm">บริษัท: <span class="font-semibold">${companies.find((c) => c.id === app.companyId)?.name}</span> · ตำแหน่ง: ${app.position}</p>
+      <p class="text-sm">สถานะ: <span class="font-semibold">${STATUS_TH[app.status] || app.status}</span></p>
+      <p class="text-sm">อาจารย์นิเทศ: ${supervisorName || "ยังไม่มอบหมาย"}</p>
+      <div class="space-x-2 pt-2">
+        ${app.status === "APPROVED" && !app.supervisorId ? `<button onclick="openAssignSupervisor(${curTrackStudent.id})" class="text-amber-700 hover:bg-amber-50 rounded-lg px-3 py-1.5 text-xs border border-amber-200">มอบหมายอาจารย์นิเทศ</button>` : ""}
+        ${app.supervisorId ? `<button onclick="openSupervisionVisit(${curTrackStudent.id})" class="text-amber-700 hover:bg-amber-50 rounded-lg px-3 py-1.5 text-xs border border-amber-200">บันทึกการนิเทศ</button>` : ""}
+      </div>`;
+  } else document.getElementById("tkt-content").innerHTML = `<p class="text-sm text-gray-400">เลือกนักศึกษาเพื่อดูสถานะ</p>`;
+}
+
+function init() {
+  if (!enforceRole(["manager", "supervisor"])) return;
+  const qsStudent = new URLSearchParams(location.search).get("student");
+  if (qsStudent) curTrackStudent = students.find((s) => s.id === Number(qsStudent));
+  render();
+  notifyParentPage("track-t");
+}
+</script>
+</body>
+</html>

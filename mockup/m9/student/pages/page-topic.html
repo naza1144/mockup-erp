@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 นักศึกษา · เสนอหัวข้อโครงงาน/วิทยานิพนธ์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ProposeTopic — UC-01/02 ═══ -->
+<div class="max-w-4xl">
+  <div id="topic-rejected-banner" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3"></div>
+  <h1 class="text-2xl font-bold mb-4">เสนอหัวข้อโครงงาน/วิทยานิพนธ์</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">ชื่อเรื่อง (ไทย)</label>
+        <input id="tp-title-th" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-pink-300"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ชื่อเรื่อง (อังกฤษ)</label>
+        <input id="tp-title-en" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-pink-300"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">ที่ปรึกษาหลัก (MAIN · soft FK → faculty.instructor)</label>
+        <select id="tp-main-advisor" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></select></div>
+      <div><label class="text-sm font-semibold text-gray-700">ที่ปรึกษาร่วม (CO · ถ้ามี)</label>
+        <select id="tp-co-advisor" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></select></div>
+    </div>
+    <div><label class="text-sm font-semibold text-gray-700">ฟังก์ชันหลัก</label>
+      <textarea id="tp-main-function" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">เปรียบเทียบซอฟต์แวร์ที่มีอยู่</label>
+      <textarea id="tp-comparison" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">เครื่องมือที่ใช้</label>
+      <textarea id="tp-tools" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <p class="text-xs text-gray-400">ระบบจริง: ดึงรายชื่อ+expertise อาจารย์จาก M3 · GET /instructors?expertise=&available=</p>
+    <p id="tp-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="submitTopic()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ส่งหัวข้อ</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let thesis = loadData("m9_st_thesis", null);
+
+function fillAdvisorSelects() {
+  const opts = `<option value="">— เลือก —</option>` + mockInstructors.map((i) => `<option value="${i.id}">${i.name}</option>`).join("");
+  document.getElementById("tp-main-advisor").innerHTML = opts;
+  document.getElementById("tp-co-advisor").innerHTML = `<option value="">— ไม่มี —</option>` + mockInstructors.map((i) => `<option value="${i.id}">${i.name}</option>`).join("");
+}
+
+/* ═══ UC-01/02 — เสนอหัวข้อ · ห้ามเสนอซ้ำถ้ามีหัวข้อ active (Alt Flow) ═══ */
+function submitTopic() {
+  const err = document.getElementById("tp-error");
+  if (thesis && ["SUBMITTED", "APPROVED"].includes(thesis.status)) {
+    err.textContent = "คุณมีหัวข้อที่มีสถานะ active อยู่แล้ว — ไม่สามารถเสนอซ้ำได้"; err.classList.remove("hidden"); return;
+  }
+  const titleTh = document.getElementById("tp-title-th").value.trim();
+  const titleEn = document.getElementById("tp-title-en").value.trim();
+  const mainFunction = document.getElementById("tp-main-function").value.trim();
+  const comparison = document.getElementById("tp-comparison").value.trim();
+  const tools = document.getElementById("tp-tools").value.trim();
+  const mainAdv = document.getElementById("tp-main-advisor").value;
+  if (!titleTh || !titleEn || !mainFunction || !comparison || !tools || !mainAdv) {
+    err.textContent = "กรอกข้อมูลให้ครบทุกช่อง และเลือกที่ปรึกษาหลัก ก่อนส่งหัวข้อ"; err.classList.remove("hidden"); return;
+  }
+  err.classList.add("hidden");
+  const coAdv = document.getElementById("tp-co-advisor").value;
+  const mainName = mockInstructors.find((i) => i.id == mainAdv).name;
+  const coName = coAdv ? mockInstructors.find((i) => i.id == coAdv).name : null;
+  const currentAcademicYear = new Date().getFullYear() + 543;
+  /* ระบบจริง: POST /theses แล้ว POST /theses/{id}/advisors */
+  thesis = {
+    titleTh, titleEn,
+    program: thesis?.program || "CS-2566",
+    academicYear: thesis?.academicYear || currentAcademicYear,
+    mainFunction, comparison, tools,
+    mainAdvisor: mainName, coAdvisor: coName,
+    status: "SUBMITTED", comment: "",
+    topicHistory: [{ titleTh, titleEn, reason: "เสนอหัวข้อครั้งแรก", changed_by: "นักศึกษา", changed_at: new Date().toISOString() }],
+    milestones: MILESTONE_NAMES.map((n) => ({ name: n.name, due_date: n.due_date, status: "NOT_STARTED", file: null, docType: null, version: 0 })),
+    documents: [],
+    finalStage: null, finalDoc: null, metadata: null,
+  };
+  saveData("m9_st_thesis", thesis);
+  window.location.href = "page-milestone.html";
+}
+
+function init() {
+  fillAdvisorSelects();
+  if (thesis) {
+    document.getElementById("topic-rejected-banner").classList.toggle("hidden", thesis.status !== "REJECTED");
+    if (thesis.status === "REJECTED") document.getElementById("topic-rejected-banner").textContent =
+      `หัวข้อถูกตีกลับ — ความเห็น: "${thesis.comment || "กรุณาปรับปรุงและเสนอใหม่"}"`;
+  }
+  notifyParentPage("topic");
+}
+</script>
+</body>
+</html>

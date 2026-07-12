@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 นักศึกษา · ติดตาม Milestone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ TrackMilestone — UC-10 ═══ -->
+<div class="max-w-4xl">
+  <div id="empty-state" class="hidden text-sm text-gray-400 text-center py-10">ยังไม่มีหัวข้อโครงงาน — <a href="page-topic.html" class="text-pink-600 underline">เสนอหัวข้อ</a> ก่อน</div>
+  <div id="content-wrap">
+    <div id="ms-pending-banner" class="hidden mb-4 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl px-4 py-3">
+      หัวข้อของคุณอยู่ระหว่างรอผจก.รายวิชาพิจารณาอนุมัติ — ยังไม่สามารถติดตาม milestone ได้จนกว่าจะอนุมัติ
+      <div class="mt-2 space-x-2">
+        <button onclick="simulateTopicDecision('APPROVED')" class="text-xs underline hover:text-green-700">▶ จำลองผจก.รายวิชาอนุมัติหัวข้อ</button>
+        <button onclick="simulateTopicDecision('REJECTED')" class="text-xs underline hover:text-red-700">▶ จำลองตีกลับหัวข้อ</button>
+      </div>
+    </div>
+    <div class="flex items-center justify-between mb-1">
+      <h1 class="text-2xl font-bold">ติดตาม Milestone</h1>
+      <a href="page-appointment.html" class="text-sm text-pink-700 hover:bg-pink-50 rounded-lg px-3 py-1.5 border border-pink-200">นัดพบที่ปรึกษา</a>
+    </div>
+    <p class="text-xs text-gray-500 mb-4">
+      <span id="ms-title"></span> ·
+      ที่ปรึกษา: <span id="ms-advisor"></span>
+    </p>
+    <div id="ms-list" class="space-y-2 mb-5"></div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-sm font-semibold mb-2">ขอสอบจบ (UC-15 · BR-M9-004: milestone ทุกขั้นต้อง APPROVED ก่อน)</p>
+      <ul id="fe-checklist" class="text-xs space-y-1 mb-3"></ul>
+      <button id="fe-request-btn" onclick="requestFinalExam()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">ขอสอบจบ</button>
+    </div>
+
+    <p class="text-xs text-gray-400 mt-4">
+      หมายเหตุ: การอนุมัติ milestone และผลสอบเค้าโครงจริงเกิดใน Staff/Committee App (คนละแอป) —
+      ปุ่มด้านล่างจำลองผลเพื่อสาธิตเท่านั้น
+    </p>
+    <button onclick="simulateProposalPass()" class="mt-2 text-sm text-pink-700 hover:bg-pink-50 rounded-lg px-3 py-1.5 border border-pink-200">▶ จำลองผลสอบเค้าโครง = ผ่าน</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let thesis = loadData("m9_st_thesis", null);
+
+function finalExamChecklist() {
+  const allApproved = thesis.milestones.every((m) => m.status === "APPROVED");
+  const proposalPassed = thesis.proposalResult === "PASSED";
+  return { allApproved, proposalPassed, ok: allApproved && proposalPassed };
+}
+function requestFinalExam() {
+  const chk = finalExamChecklist();
+  if (!chk.ok) return;
+  thesis.finalStage = "REQUESTED";
+  saveData("m9_st_thesis", thesis);
+  window.location.href = "page-final-status.html";
+}
+
+/* จำลองผลอนุมัติหัวข้อจาก Staff/Committee App (คนละแอป standalone) — เพื่อสาธิต UC-03 */
+function simulateTopicDecision(decision) {
+  thesis.status = decision;
+  if (decision === "REJECTED") {
+    thesis.comment = "ขอบเขตกว้างเกินไป กรุณาปรับให้ชัดเจนและเสนอใหม่";
+    thesis.topicHistory.push({ titleTh: thesis.titleTh, titleEn: thesis.titleEn, reason: "หัวข้อถูกตีกลับ: " + thesis.comment, changed_by: "ผจก.รายวิชา", changed_at: new Date().toISOString() });
+  } else if (decision === "APPROVED") {
+    thesis.topicHistory.push({ titleTh: thesis.titleTh, titleEn: thesis.titleEn, reason: "หัวข้อได้รับการอนุมัติ", changed_by: "ผจก.รายวิชา", changed_at: new Date().toISOString() });
+  }
+  saveData("m9_st_thesis", thesis);
+  if (decision === "REJECTED") { window.location.href = "page-topic.html"; return; }
+  render();
+}
+function simulateApproveMilestone(name) {
+  thesis.milestones.find((x) => x.name === name).status = "APPROVED";
+  saveData("m9_st_thesis", thesis); render();
+}
+function simulateProposalPass() { thesis.proposalResult = "PASSED"; saveData("m9_st_thesis", thesis); render(); }
+
+function render() {
+  document.getElementById("ms-pending-banner").classList.toggle("hidden", thesis.status !== "SUBMITTED");
+  document.getElementById("ms-title").textContent = thesis.titleTh;
+  document.getElementById("ms-advisor").textContent = thesis.mainAdvisor + (thesis.coAdvisor ? ", " + thesis.coAdvisor : "");
+  document.getElementById("ms-list").innerHTML = thesis.milestones.map((m) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+      <div>
+        <p class="text-sm font-semibold">${m.name}</p>
+        <p class="text-xs text-gray-400">กำหนดส่ง: ${m.due_date || "-"} ${m.file ? "· แนบไฟล์: " + m.file + (m.docType ? " (" + m.docType + " v" + m.version + ")" : "") : "· ยังไม่แนบไฟล์"}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${MS_BADGE[m.status]}">${MS_TH[m.status]}</span>
+        <a href="page-attach.html?m=${encodeURIComponent(m.name)}" class="text-pink-700 hover:bg-pink-50 rounded-lg px-2 py-1 text-xs">แนบเอกสาร</a>
+        ${m.status === "PENDING_REVIEW" ? `<button onclick="simulateApproveMilestone('${m.name}')" class="text-gray-400 hover:text-pink-700 text-xs underline">จำลองที่ปรึกษาอนุมัติ</button>` : ""}
+      </div>
+    </div>`).join("");
+
+  const chk = finalExamChecklist();
+  document.getElementById("fe-checklist").innerHTML = `
+    <li class="${chk.allApproved ? "text-green-700" : "text-red-600"}">${chk.allApproved ? "✓" : "✕"} Milestone ทุกขั้นอนุมัติแล้ว (BR-M9-004)</li>
+    <li class="${chk.proposalPassed ? "text-green-700" : "text-red-600"}">${chk.proposalPassed ? "✓" : "✕"} ผลสอบเค้าโครง: ${thesis.proposalResult === "PASSED" ? "ผ่าน" : "ยังไม่ผ่าน/ยังไม่สอบ"}</li>`;
+  const btn = document.getElementById("fe-request-btn");
+  btn.disabled = !chk.ok; btn.title = chk.ok ? "" : "เงื่อนไขยังไม่ครบ — ดู checklist ด้านบน";
+}
+
+function init() {
+  if (!thesis || thesis.status === "REJECTED") {
+    document.getElementById("empty-state").classList.remove("hidden");
+    document.getElementById("content-wrap").classList.add("hidden");
+  } else {
+    render();
+  }
+  notifyParentPage("milestone");
+}
+</script>
+</body>
+</html>

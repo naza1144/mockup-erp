@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 กรรมการสัมภาษณ์ · กำลังสัมภาษณ์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+    .queue-card { transition: all 0.2s ease; }
+    .queue-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .status-pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .badge-online { background: #dbeafe; color: #1d4ed8; }
+    .badge-onsite { background: #fef3c7; color: #b45309; }
+    .badge-waiting { background: #f3f4f6; color: #6b7280; }
+    .badge-interviewing { background: #dbeafe; color: #2563eb; }
+    .badge-done { background: #d1fae5; color: #059669; }
+    .badge-skipped { background: #fee2e2; color: #dc2626; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ══════════════════════ PAGE: INTERVIEW (Call In) ══════════════════════ -->
+<div>
+  <button onclick="finishInterview(true)" class="text-sm text-gray-500 hover:text-gray-700 mb-3">← กลับคิวสัมภาษณ์</button>
+  <h1 class="text-2xl font-bold mb-1">กำลังสัมภาษณ์</h1>
+  <div id="iv-card" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 max-w-2xl space-y-5">
+    <!-- Profile header -->
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="text-xs text-gray-500">ผู้สมัคร</p>
+        <h2 id="iv-name" class="text-xl font-bold"></h2>
+        <div class="flex gap-2 mt-1">
+          <span id="iv-mode-badge" class="inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold"></span>
+          <span id="iv-program" class="text-xs text-gray-500"></span>
+        </div>
+      </div>
+      <div id="iv-schedule-info" class="text-right text-xs text-gray-500">
+        <p>นัดหมาย: <span id="iv-scheduled-at"></span></p>
+        <p id="iv-link-info" class="text-blue-600 mt-1"></p>
+        <p id="iv-place-info" class="text-amber-700 mt-1"></p>
+      </div>
+    </div>
+
+    <hr class="border-gray-100">
+
+    <!-- Score -->
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-sm font-semibold text-gray-700">คะแนน (0-100)</label>
+        <input id="iv-score" type="number" min="0" max="100" class="w-full max-w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700">ผลตัดสิน</label>
+        <select id="iv-decision" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="">— เลือกผล —</option>
+          <option value="PASS">ผ่าน</option>
+          <option value="FAIL">ไม่ผ่าน</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Comments -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">ความเห็นกรรมการ</label>
+      <textarea id="iv-comment" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="บันทึกความเห็น..."></textarea>
+    </div>
+
+    <p id="iv-error" class="text-xs text-red-600 hidden"></p>
+
+    <!-- Actions -->
+    <div class="flex gap-2">
+      <button onclick="saveInterviewResult()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-5 py-2">บันทึกผลและเรียกคนถัดไป</button>
+      <button onclick="skipBackToQueue()" class="text-gray-500 hover:bg-gray-50 rounded-xl px-4 py-2 text-sm border border-gray-200">ข้าม (กลับคิว)</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let queue = loadQueue();
+const id = Number(new URLSearchParams(location.search).get("id"));
+let currentInterview = queue.find(a => a.id === id) || null;
+
+/* ===== Save interview result ===== */
+function saveInterviewResult() {
+  if (!currentInterview) return;
+  const score = document.getElementById('iv-score').value;
+  const decision = document.getElementById('iv-decision').value;
+  const comment = document.getElementById('iv-comment').value.trim();
+  const err = document.getElementById('iv-error');
+
+  if (!score || decision === '') {
+    err.textContent = 'กรุณากรอกคะแนนและเลือกผลตัดสิน'; err.classList.remove('hidden'); return;
+  }
+  const s = Number(score);
+  if (s < 0 || s > 100 || isNaN(s)) {
+    err.textContent = 'คะแนนต้องอยู่ระหว่าง 0-100'; err.classList.remove('hidden'); return;
+  }
+  err.classList.add('hidden');
+
+  currentInterview.score = s;
+  currentInterview.decision = decision;
+  currentInterview.comment = comment;
+  currentInterview.status = 'DONE';
+
+  saveData('m4_interview_queue', queue);
+  const nextWaiting = queue.find(a => a.status === 'WAITING');
+
+  if (nextWaiting) {
+    // auto-call next
+    if (confirm(`บันทึกผล "${currentInterview.name}" แล้ว\nต้องการเรียก "${nextWaiting.name}" ถัดไป?`)) {
+      nextWaiting.status = 'CALLED';
+      saveData('m4_interview_queue', queue);
+      window.location.href = 'page-interview.html?id=' + nextWaiting.id;
+      return;
+    }
+  } else {
+    alert(`บันทึกผล "${currentInterview.name}" เรียบร้อย — ไม่มีผู้สมัครเหลือในคิว`);
+  }
+  window.location.href = 'page-queue.html';
+}
+
+function finishInterview(cancel) {
+  // Back to queue without saving
+  if (currentInterview && cancel) {
+    currentInterview.status = 'WAITING';
+    saveData('m4_interview_queue', queue);
+  }
+  window.location.href = 'page-queue.html';
+}
+
+function skipBackToQueue() {
+  if (currentInterview) {
+    currentInterview.status = 'WAITING';
+    saveData('m4_interview_queue', queue);
+  }
+  window.location.href = 'page-queue.html';
+}
+
+function render() {
+  if (currentInterview) {
+    const a = currentInterview;
+    document.getElementById('iv-name').textContent = a.name;
+    document.getElementById('iv-program').textContent = a.program;
+    const isOnline = a.mode === 'online';
+    document.getElementById('iv-mode-badge').className = `inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold ${isOnline ? 'badge-online' : 'badge-onsite'}`;
+    document.getElementById('iv-mode-badge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-blue-500' : 'bg-amber-500'}"></span> ${isOnline ? 'Online' : 'On-site'}`;
+
+    document.getElementById('iv-scheduled-at').textContent = a.arrivedAt ? `เดินเข้าคิว ${a.arrivedAt} น.` : 'Walk-in';
+    if (isOnline && a.link) {
+      document.getElementById('iv-link-info').innerHTML = `🔗 <a href="${a.link}" target="_blank" class="underline">${a.link}</a>`;
+      document.getElementById('iv-place-info').textContent = '';
+    } else if (!isOnline && a.place) {
+      document.getElementById('iv-link-info').textContent = '';
+      document.getElementById('iv-place-info').textContent = `📍 ${a.place}`;
+    } else {
+      document.getElementById('iv-link-info').textContent = '';
+      document.getElementById('iv-place-info').textContent = '';
+    }
+
+    document.getElementById('iv-score').value = a.score ?? '';
+    document.getElementById('iv-decision').value = a.decision ?? '';
+    document.getElementById('iv-comment').value = a.comment ?? '';
+    document.getElementById('iv-error').classList.add('hidden');
+  }
+}
+
+function init() { render(); notifyParentPage('interview'); }
+</script>
+</body>
+</html>

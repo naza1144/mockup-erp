@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · จัดการเวอร์ชันหลักสูตร</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 3. Version Management — UC-A4 ═══ -->
+<div>
+  <a id="back-link" href="#" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับไปหน้าหลักสูตร</a>
+  <h1 class="text-2xl font-bold mb-4">จัดการเวอร์ชันหลักสูตร (program_version)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-2xl">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-semibold">รายการเวอร์ชัน</p>
+      <button onclick="createVersion()" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">＋ สร้างเวอร์ชันใหม่</button>
+    </div>
+    <div id="ver-list" class="space-y-1 mb-4"></div>
+    <div class="flex gap-2 items-end">
+      <div><label class="text-xs text-gray-500">เวอร์ชัน A</label><select id="ver-a" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm block"></select></div>
+      <div><label class="text-xs text-gray-500">เวอร์ชัน B</label><select id="ver-b" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm block"></select></div>
+      <button onclick="diffVersions()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg px-3 py-1.5">เปรียบเทียบ</button>
+    </div>
+    <div id="ver-diff" class="mt-4 text-sm"></div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let programs = loadData("m1c_programs", seedPrograms);
+let courses = loadData("m1c_courses", seedCourses);
+const pid = Number(new URLSearchParams(location.search).get("pid")) || programs[0].id;
+let curProgram = programs.find((p) => p.id === pid) || programs[0];
+
+function createVersion() {
+  curProgram.program_versions.push({ program_version_id: Date.now(), year: curProgram.year, total_credits: curProgram.total_credits, status: "DRAFT", effective_date: new Date().toISOString().slice(0,10), course_ids: courses.map(c => c.course_id) });
+  saveData("m1c_programs", programs); render();
+}
+function diffVersions() {
+  const a = (curProgram.program_versions || []).find((v) => v.program_version_id == document.getElementById("ver-a").value);
+  const b = (curProgram.program_versions || []).find((v) => v.program_version_id == document.getElementById("ver-b").value);
+  if (!a || !b) return;
+  const added = (b.course_ids || []).filter((id) => !(a.course_ids || []).includes(id)).map((id) => courses.find((c) => c.course_id === id)?.code);
+  const removed = (a.course_ids || []).filter((id) => !(b.course_ids || []).includes(id)).map((id) => courses.find((c) => c.course_id === id)?.code);
+  document.getElementById("ver-diff").innerHTML = `<p>หน่วยกิตรวม: ${a.total_credits} → ${b.total_credits}</p>
+    <p class="text-green-700">เพิ่ม: ${added.join(", ") || "-"}</p><p class="text-red-600">ลบ: ${removed.join(", ") || "-"}</p>`;
+}
+
+function render() {
+  const vers = curProgram.program_versions || [];
+  document.getElementById("ver-list").innerHTML = vers.map((v) => `<p class="text-sm">${v.year} — ${v.total_credits} หน่วยกิต · ${STATUS_TH[v.status]}</p>`).join("") || '<p class="text-sm text-gray-400">ยังไม่มีเวอร์ชัน</p>';
+  const verOpts = vers.map((v) => `<option value="${v.program_version_id}">${v.year}</option>`).join("");
+  document.getElementById("ver-a").innerHTML = verOpts; document.getElementById("ver-b").innerHTML = verOpts;
+}
+
+function init() {
+  document.getElementById("back-link").href = "page-program-edit.html?pid=" + curProgram.id;
+  render();
+  notifyParentPage("version");
+}
+</script>
+</body>
+</html>

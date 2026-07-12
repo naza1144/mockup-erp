@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 นักศึกษา · บันทึกการอบรม</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ TrainingRecord — UC-04 ═══ -->
+<div class="max-w-2xl">
+  <a href="page-dashboard.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">บันทึกการอบรม + หลักฐาน</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-md space-y-3 mb-5">
+    <div><label class="text-sm font-semibold text-gray-700">หัวข้อการอบรม</label><input id="tr-topic" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div><label class="text-sm font-semibold text-gray-700">ชั่วโมงที่ขอ</label><input id="tr-hours" type="number" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div><label class="text-sm font-semibold text-gray-700">ไฟล์หลักฐาน (jpg/png/pdf ≤ 5MB)</label>
+      <input type="file" id="tr-file" accept=".jpg,.jpeg,.png,.pdf" onchange="pickTrainingFile()" class="text-sm block mt-1">
+      <p id="tr-file-name" class="text-xs text-amber-700 mt-1"></p></div>
+    <p id="tr-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="submitTraining()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+  <p class="text-sm font-semibold mb-2">ประวัติการอบรม</p>
+  <div id="training-list" class="space-y-2"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let trainings = loadData("m8_st_trainings", seedTrainings);
+let pickedTrainingFile = null;
+
+/* ═══ UC-04 — บันทึกการอบรม ═══ */
+function pickTrainingFile() {
+  const input = document.getElementById("tr-file"); const file = input.files[0];
+  const label = document.getElementById("tr-file-name");
+  if (!file) return;
+  const okType = ["image/jpeg", "image/png", "application/pdf"].includes(file.type);
+  if (!okType || file.size > 5 * 1024 * 1024) {
+    pickedTrainingFile = null; label.className = "text-xs text-red-600 mt-1";
+    label.textContent = !okType ? "รองรับเฉพาะ jpg/png/pdf" : "ไฟล์ใหญ่เกิน 5MB"; input.value = ""; return;
+  }
+  pickedTrainingFile = file.name; label.className = "text-xs text-amber-700 mt-1"; label.textContent = "แนบแล้ว: " + file.name;
+}
+function submitTraining() {
+  const topic = document.getElementById("tr-topic").value.trim();
+  const hours = Number(document.getElementById("tr-hours").value);
+  const err = document.getElementById("tr-error");
+  if (!topic || !hours || !pickedTrainingFile) { err.textContent = "กรอกหัวข้อ ชั่วโมง และแนบไฟล์หลักฐานให้ครบ"; err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  /* ระบบจริง: POST /students/me/trainings — ไฟล์เก็บที่ M10 Storage bucket coop-docs */
+  trainings.push({ id: Date.now(), topic, reqHours: hours, approvedHours: 0, status: "PENDING" });
+  saveData("m8_st_trainings", trainings); pickedTrainingFile = null;
+  document.getElementById("tr-topic").value = ""; document.getElementById("tr-hours").value = "";
+  alert("บันทึกการอบรมแล้ว — รอการตรวจจากอาจารย์"); render();
+}
+
+function render() {
+  const TR_BADGE = { PENDING: "bg-amber-100 text-amber-700", APPROVED: "bg-green-100 text-green-700", REJECTED: "bg-red-100 text-red-700" };
+  const TR_TH = { PENDING: "รอตรวจ", APPROVED: "อนุมัติแล้ว", REJECTED: "ถูกปฏิเสธ" };
+  document.getElementById("training-list").innerHTML = trainings.map((t) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+      <div><p class="text-sm font-semibold">${t.topic}</p><p class="text-xs text-gray-400">ขอ ${t.reqHours} ชม. ${t.status === "APPROVED" ? `· อนุมัติ ${t.approvedHours} ชม.` : ""}</p></div>
+      <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${TR_BADGE[t.status]}">${TR_TH[t.status]}</span>
+    </div>`).join("") || `<p class="text-sm text-gray-400">ยังไม่มีประวัติการอบรม</p>`;
+}
+
+function init() {
+  render();
+  notifyParentPage("training");
+}
+</script>
+</body>
+</html>

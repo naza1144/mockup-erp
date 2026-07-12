@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · จัดการ PLO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 5. PLO Management — UC-A6 (ตาม Data Design: plo.tqf_domain D1-D5) ═══ -->
+<div>
+  <a id="back-link" href="#" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับไปหน้าหลักสูตร</a>
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">จัดการ PLO</h1>
+    <div class="space-x-2">
+      <a id="history-link" href="#" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">ดูประวัติการแก้ไข</a>
+      <a id="matrix-link" href="#" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">จับคู่ PLO-CLO</a>
+    </div>
+  </div>
+  <div id="plo-list" class="space-y-2 mb-4"></div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex gap-2 max-w-3xl">
+    <input id="plo-desc" placeholder="คำอธิบาย PLO" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1">
+    <select id="plo-domain" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></select>
+    <button onclick="addPlo()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg px-3">เพิ่ม PLO</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let programs = loadData("m1c_programs", seedPrograms);
+const pid = Number(new URLSearchParams(location.search).get("pid")) || programs[0].id;
+let curProgram = programs.find((p) => p.id === pid) || programs[0];
+
+function addPlo() {
+  const desc = document.getElementById("plo-desc").value.trim();
+  if (!desc) return;
+  const domainIdx = Number(document.getElementById("plo-domain").value);
+  const code = "PLO" + ((curProgram.plos || []).length + 1);
+  curProgram.plos.push({ plo_id: Date.now(), code, description: desc, tqf_domain: DOMAIN_CODES[domainIdx], sort_order: curProgram.plos.length + 1 });
+  saveData("m1c_programs", programs);
+  document.getElementById("plo-desc").value = ""; render();
+}
+function movePlo(idx, dir) {
+  const arr = curProgram.plos; const j = idx + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[idx], arr[j]] = [arr[j], arr[idx]];
+  arr.forEach((p, i) => p.sort_order = i + 1);
+  saveData("m1c_programs", programs); render();
+}
+function deletePlo(ploId) { curProgram.plos = curProgram.plos.filter((p) => p.plo_id !== ploId); saveData("m1c_programs", programs); render(); }
+
+function render() {
+  document.getElementById("plo-domain").innerHTML = DOMAIN_NAMES.map((n, i) => `<option value="${i}">${DOMAIN_CODES[i]} · ${n}</option>`).join("");
+  document.getElementById("plo-list").innerHTML = (curProgram.plos || []).map((p, i) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+      <div><p class="text-sm font-semibold">${p.code}</p><p class="text-xs text-gray-500">${p.description}</p><p class="text-xs text-gray-400">TQF Domain: ${p.tqf_domain}</p></div>
+      <div class="space-x-1"><button onclick="movePlo(${i},-1)" class="text-gray-400 hover:text-gray-700 text-xs">↑</button><button onclick="movePlo(${i},1)" class="text-gray-400 hover:text-gray-700 text-xs">↓</button>
+        <button onclick="deletePlo(${p.plo_id})" class="text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 text-xs">ลบ</button></div></div>`).join("") || '<p class="text-sm text-gray-400">ยังไม่มี PLO</p>';
+}
+
+function init() {
+  document.getElementById("back-link").href = "page-program-edit.html?pid=" + curProgram.id;
+  document.getElementById("history-link").href = "page-plo-history.html?pid=" + curProgram.id;
+  document.getElementById("matrix-link").href = "page-matrix.html?pid=" + curProgram.id;
+  render();
+  notifyParentPage("plo");
+}
+</script>
+</body>
+</html>

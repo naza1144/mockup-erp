@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · สร้างเอกสาร มคอ.2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 12. Generate มคอ.2 — UC-A15 ═══ -->
+<div>
+  <a id="back-link" href="#" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">สร้างเอกสาร มคอ.2</h1>
+  <div id="tqf2-warning" class="hidden mb-4 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl px-4 py-3"></div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-2xl space-y-3">
+    <p class="text-xs text-gray-500">ข้อมูล PLO/CLO/mapping ดึงอัตโนมัติ — จำนวน PLO: <span id="tqf2-plo-count"></span></p>
+    <div><label class="text-sm font-semibold text-gray-700">ปรัชญาหลักสูตร</label><textarea id="tqf2-philosophy" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">วัตถุประสงค์</label><textarea id="tqf2-objectives" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">แผนการรับนักศึกษา</label><textarea id="tqf2-plan" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <button onclick="saveDraftDoc()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกร่าง & Preview</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let programs = loadData("m1c_programs", seedPrograms);
+let courses = loadData("m1c_courses", seedCourses);
+let mapping = loadData("m1c_mapping", seedMapping);
+let docs = loadData("m1c_docs", seedDocs);
+const pid = Number(new URLSearchParams(location.search).get("pid")) || programs[0].id;
+let curProgram = programs.find((p) => p.id === pid) || programs[0];
+
+function computeCoverage() {
+  return (curProgram.plos || []).map((plo) => ({
+    plo, hasMaster: mapping.some((m) => m.plo === plo.plo_id && m.level === "M"),
+    hasAny: mapping.some((m) => m.plo === plo.plo_id)
+  }));
+}
+function saveDraftDoc() {
+  docs.TQF2 = { status: "DRAFT", content: {
+    philosophy: document.getElementById("tqf2-philosophy")?.value,
+    objectives: document.getElementById("tqf2-objectives")?.value,
+    plan: document.getElementById("tqf2-plan")?.value,
+  } };
+  saveData("m1c_docs", docs);
+  location.href = "page-preview-export.html?type=TQF2&src=tqf2&pid=" + curProgram.id;
+}
+
+function render() {
+  document.getElementById("tqf2-plo-count").textContent = (curProgram.plos || []).length;
+  const cov = computeCoverage(); const gaps = cov.filter((c) => !c.hasMaster);
+  document.getElementById("tqf2-warning").classList.toggle("hidden", gaps.length === 0);
+  if (gaps.length) document.getElementById("tqf2-warning").textContent = `พบ ${gaps.length} PLO ที่ยังไม่มี Master — แนะนำตรวจสอบความครอบคลุมก่อน`;
+  if (docs.TQF2?.content) {
+    document.getElementById("tqf2-philosophy").value = docs.TQF2.content.philosophy || "";
+    document.getElementById("tqf2-objectives").value = docs.TQF2.content.objectives || "";
+    document.getElementById("tqf2-plan").value = docs.TQF2.content.plan || "";
+  }
+}
+
+function init() {
+  document.getElementById("back-link").href = "page-program-edit.html?pid=" + curProgram.id;
+  render();
+  notifyParentPage("tqf2");
+}
+</script>
+</body>
+</html>

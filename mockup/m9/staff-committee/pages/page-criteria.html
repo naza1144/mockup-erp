@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · กำหนดเกณฑ์ให้คะแนน</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ScoreCriteria — UC-22 ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">กำหนดเกณฑ์ให้คะแนน (<code>score_criterion</code>)</h1>
+  <p class="text-xs text-gray-500 mb-3">BR-M9-003: SUM(weight) = 100% per defense_type · <code>defense_type</code> IN ('PROPOSAL','PROGRESS','FINAL')</p>
+  <div class="flex gap-2 mb-4">
+    <button onclick="setCriteriaType('proposal')" data-ctype="proposal" class="ctype-btn text-sm rounded-lg px-3 py-1.5">PROPOSAL</button>
+    <button onclick="setCriteriaType('progress')" data-ctype="progress" class="ctype-btn text-sm rounded-lg px-3 py-1.5">PROGRESS</button>
+    <button onclick="setCriteriaType('final')" data-ctype="final" class="ctype-btn text-sm rounded-lg px-3 py-1.5">FINAL</button>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg">
+    <div id="crit-rows" class="space-y-2 mb-3"></div>
+    <div class="flex gap-2 mb-3">
+      <input id="crit-name" placeholder="หัวข้อ เช่น การนำเสนอ" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1">
+      <input id="crit-weight" type="number" placeholder="น้ำหนัก %" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-28">
+      <button onclick="addCriterionItem()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm rounded-lg px-3">เพิ่ม</button>
+    </div>
+    <p class="text-sm">ผลรวมน้ำหนัก: <span id="crit-sum" class="font-semibold"></span>%</p>
+    <p id="crit-error" class="text-xs text-red-600 hidden mt-1">ผลรวมน้ำหนักต้องเท่ากับ 100% พอดี ก่อนบันทึก (Alternative Flow UC-22 · BR-M9-003)</p>
+    <button onclick="saveCriteria()" class="mt-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกเกณฑ์</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let scoreCriteria = loadData("m9_sc_criteria", defaultCriteria());
+let curCriteriaType = new URLSearchParams(location.search).get("type") || "proposal";
+
+function setCriteriaType(t) { curCriteriaType = t; render(); }
+function addCriterionItem() {
+  const name = document.getElementById("crit-name").value.trim();
+  const weight = Number(document.getElementById("crit-weight").value);
+  if (!name || !weight) { alert("กรุณากรอกชื่อหัวข้อและน้ำหนัก"); return; }
+  if (!scoreCriteria[curCriteriaType]) scoreCriteria[curCriteriaType] = [];
+  scoreCriteria[curCriteriaType].push({ name, weight });
+  document.getElementById("crit-name").value = ""; document.getElementById("crit-weight").value = "";
+  saveData("m9_sc_criteria", scoreCriteria);
+  render();
+}
+function removeCriterionItem(name) {
+  if (!scoreCriteria[curCriteriaType]) return;
+  scoreCriteria[curCriteriaType] = scoreCriteria[curCriteriaType].filter((c) => c.name !== name);
+  saveData("m9_sc_criteria", scoreCriteria);
+  render();
+}
+function saveCriteria() {
+  if (!scoreCriteria[curCriteriaType]) { alert("ไม่มีเกณฑ์ให้บันทึก"); return; }
+  const sum = scoreCriteria[curCriteriaType].reduce((s, c) => s + c.weight, 0);
+  const err = document.getElementById("crit-error");
+  if (sum !== 100) { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  saveData("m9_sc_criteria", scoreCriteria);
+  alert("บันทึกเกณฑ์ให้คะแนนแล้ว — BR-M9-003: SUM(weight) = " + sum + "% (" + curCriteriaType.toUpperCase() + ")");
+}
+
+function render() {
+  document.querySelectorAll(".ctype-btn").forEach((b) => {
+    const on = b.dataset.ctype === curCriteriaType;
+    b.className = "ctype-btn text-sm rounded-lg px-3 py-1.5 " + (on ? "bg-pink-100 text-pink-700 font-semibold" : "text-gray-500 hover:bg-gray-100");
+  });
+  const items = scoreCriteria[curCriteriaType] || [];
+  document.getElementById("crit-rows").innerHTML = items.length > 0
+    ? items.map((c, i) => `
+      <div class="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+        <span>${i + 1}. ${c.name}</span><span class="font-mono">${c.weight}%</span>
+        <button onclick="removeCriterionItem('${c.name.replace(/'/g, "\\'")}')" class="text-red-600 text-xs hover:underline">ลบ</button>
+      </div>`).join("")
+    : `<p class="text-xs text-gray-400 text-center py-4">ยังไม่มีเกณฑ์ — เพิ่มหัวข้อด้านล่าง</p>`;
+  document.getElementById("crit-sum").textContent = items.reduce((s, c) => s + c.weight, 0);
+}
+
+function init() { render(); notifyParentPage("criteria"); }
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 นักศึกษา · ประวัติการเปลี่ยนหัวข้อ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ TopicHistory — thesis_topic_history (append-only) ═══ -->
+<div class="max-w-4xl">
+  <h1 class="text-2xl font-bold mb-4">ประวัติการเปลี่ยนหัวข้อ</h1>
+  <p class="text-xs text-gray-500 mb-3">Append-only log — thesis_topic_history · REVOKE UPDATE/DELETE (BR-M9-006)</p>
+  <div id="th-list" class="space-y-2"></div>
+  <div id="th-empty" class="hidden text-sm text-gray-400 text-center py-8">ยังไม่มีประวัติการเปลี่ยนหัวข้อ</div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+function init() {
+  const thesis = loadData("m9_st_thesis", null);
+  const thList = document.getElementById("th-list");
+  const thEmpty = document.getElementById("th-empty");
+  const history = thesis?.topicHistory || [];
+  if (history.length > 0) {
+    thEmpty.classList.add("hidden");
+    thList.innerHTML = history.map((h) => `
+      <div class="bg-white rounded-xl border border-gray-200 p-3">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold">${h.titleTh || "(ไม่มีหัวข้อ)"}</p>
+          <span class="text-xs text-gray-400">${new Date(h.changed_at).toLocaleString("th-TH")}</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">เหตุผล: ${h.reason} · โดย: ${h.changed_by}</p>
+      </div>`).join("");
+  } else {
+    thList.innerHTML = ""; thEmpty.classList.remove("hidden");
+  }
+  notifyParentPage("topic-history");
+}
+</script>
+</body>
+</html>

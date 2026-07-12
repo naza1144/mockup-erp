@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · ผลประเมินจากบริษัท</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 11. AckCompanyEval — UC-19 ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">ผลประเมินจากบริษัท</h1>
+  <div id="ae-list" class="space-y-2 mb-4"></div>
+  <div id="ae-form" class="hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-2 text-sm">
+    <p>คะแนนรวม: <span id="ae-score" class="font-semibold"></span> / 100</p>
+    <p><span class="text-gray-500">จุดเด่น:</span> <span id="ae-strengths"></span></p>
+    <p><span class="text-gray-500">ความเห็น:</span> <span id="ae-comments"></span></p>
+    <button onclick="ackEval()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">รับทราบ (ล็อกไม่ให้บริษัทแก้ไข)</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_tc_students", seedStudents);
+let curEvalCtx = null;
+
+/* ═══ UC-19 — รับทราบผลประเมินบริษัท ═══ */
+function openAckEval(studentId) { curEvalCtx = studentId; render(); document.getElementById("ae-form").classList.remove("hidden"); }
+function ackEval() {
+  const s = students.find((x) => x.id === curEvalCtx);
+  s.application.evaluation.employer.ackStatus = "ACKNOWLEDGED"; s.application.evaluation.employer.canEdit = false;
+  saveData("m8_tc_students", students); curEvalCtx = null; document.getElementById("ae-form").classList.add("hidden");
+  alert("รับทราบผลประเมินแล้ว — บริษัทไม่สามารถแก้ไขได้อีก"); render();
+}
+
+function render() {
+  const unreadEvals = students.filter((s) => s.application?.evaluation?.employer?.ackStatus === "UNREAD");
+  document.getElementById("ae-list").innerHTML = unreadEvals.map((s) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+      <div><p class="text-sm font-semibold">${s.name}</p><p class="text-xs text-gray-400">คะแนนรวม ${s.application.evaluation.employer.total}/100</p></div>
+      <button onclick="openAckEval(${s.id})" class="text-amber-700 hover:bg-amber-50 rounded-lg px-2 py-1 text-xs">ตรวจ</button>
+    </div>`).join("") || `<p class="text-sm text-gray-400">ไม่มีผลประเมินค้าง</p>`;
+  if (curEvalCtx && !document.getElementById("ae-form").classList.contains("hidden")) {
+    const s = students.find((x) => x.id === curEvalCtx); const emp = s.application.evaluation.employer;
+    document.getElementById("ae-score").textContent = emp.total; document.getElementById("ae-strengths").textContent = emp.strengths; document.getElementById("ae-comments").textContent = emp.comments;
+  }
+}
+
+function init() {
+  if (!enforceRole(["manager"])) return;
+  render();
+  notifyParentPage("ack-eval");
+}
+</script>
+</body>
+</html>

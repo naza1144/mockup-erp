@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · กำหนดวิธีวัด CLO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 18. CLO Measure — UC-A22 ═══ -->
+<div>
+  <a href="page-attainment.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">กำหนดวิธีวัด CLO (UC-A22)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-2xl space-y-4">
+    <div><label class="text-sm font-semibold text-gray-700">รายวิชา</label>
+      <select id="cm-course" onchange="renderCloMeasure()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></select></div>
+    <div id="cm-clo-list" class="space-y-3"></div>
+    <p id="cm-error" class="text-xs text-red-600 hidden">น้ำหนักรวม ≠ 100%</p>
+    <button onclick="saveCloMeasure()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let courses = loadData("m1c_courses", seedCourses);
+let cloMeasures = loadData("m1c_clo_measures", seedCloMeasures);
+
+function renderCloMeasure() {
+  const courseId = Number(document.getElementById("cm-course").value);
+  const course = courses.find((c) => c.course_id === courseId);
+  if (!course) return;
+  const measure = cloMeasures[courseId] || { clos: {} };
+  document.getElementById("cm-clo-list").innerHTML = (course.clos || []).map((clo) => {
+    const m = measure.clos[clo.clo_id] || { tools: [], weights: {} };
+    return `<div class="border border-gray-200 rounded-xl p-3">
+      <p class="text-sm font-semibold mb-1">${clo.code} — ${clo.description}</p>
+      <div class="flex gap-2 items-center mb-1">
+        <select id="cm-tool-${clo.clo_id}" class="border border-gray-300 rounded-lg px-2 py-1 text-xs">
+          <option value="สอบกลางภาค" ${m.tools[0] === "สอบกลางภาค" ? "selected" : ""}>สอบกลางภาค</option>
+          <option value="สอบปลายภาค" ${m.tools[0] === "สอบปลายภาค" ? "selected" : ""}>สอบปลายภาค</option>
+          <option value="งานมอบหมาย" ${m.tools[0] === "งานมอบหมาย" ? "selected" : ""}>งานมอบหมาย</option>
+          <option value="โปรเจกต์" ${m.tools[0] === "โปรเจกต์" ? "selected" : ""}>โปรเจกต์</option>
+        </select>
+        <label class="text-xs text-gray-500">น้ำหนัก %:</label>
+        <input id="cm-wt-${clo.clo_id}" type="number" value="${m.weights[m.tools[0]] || 100}" class="border border-gray-300 rounded-lg px-2 py-1 text-xs w-16">
+      </div></div>`;
+  }).join("");
+}
+function saveCloMeasure() {
+  const courseId = Number(document.getElementById("cm-course").value);
+  const course = courses.find((c) => c.course_id === courseId);
+  if (!course) return;
+  let totalWeight = 0;
+  const clos = {};
+  (course.clos || []).forEach((clo) => {
+    const tool = document.getElementById("cm-tool-" + clo.clo_id).value;
+    const wt = Number(document.getElementById("cm-wt-" + clo.clo_id).value || 0);
+    clos[clo.clo_id] = { tools: [tool], weights: { [tool]: wt } };
+    totalWeight += wt;
+  });
+  const err = document.getElementById("cm-error");
+  if (totalWeight !== 100) { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  cloMeasures[courseId] = { clos };
+  saveData("m1c_clo_measures", cloMeasures);
+  alert("บันทึกแล้ว"); location.href = "page-attainment.html";
+}
+
+function init() {
+  document.getElementById("cm-course").innerHTML = courses.map((c) => `<option value="${c.course_id}">${c.code}</option>`).join("");
+  renderCloMeasure();
+  notifyParentPage("clo-measure");
+}
+</script>
+</body>
+</html>

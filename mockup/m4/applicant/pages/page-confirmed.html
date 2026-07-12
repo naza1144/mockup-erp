@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 ผู้สมัคร · ส่งใบสมัครเรียบร้อย</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800" onload="init()">
+
+<main class="max-w-2xl mx-auto p-6">
+  <!-- ═══ Confirmed ═══ -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+    <div class="w-14 h-14 rounded-full bg-green-100 text-green-700 flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
+    <h1 class="text-2xl font-bold mb-2">ส่งใบสมัครเรียบร้อยแล้ว</h1>
+    <p class="text-sm text-gray-500 mb-1">เลขที่ใบสมัคร: <span id="conf-ref" class="font-mono font-semibold text-gray-700"></span></p>
+    <p class="text-xs text-gray-400 mb-5">ระบบจะแจ้งนัดหมายสัมภาษณ์ผ่านอีเมลที่ระบุไว้</p>
+    <button onclick="window.location.href='page-status.html'" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ติดตามสถานะ</button>
+  </div>
+</main>
+
+<script src="../shared.js"></script>
+<script>
+let app = loadData("m4_ap_application", null);
+
+function init() {
+  if (app) document.getElementById("conf-ref").textContent = app.ref;
+  notifyParentPage("confirmed");
+}
+</script>
+</body>
+</html>

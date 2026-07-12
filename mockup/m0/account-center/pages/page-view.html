@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M0 Account Center · โปรไฟล์ของฉัน</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ VIEW_PROFILE — UC-04 ═══ -->
+<div class="max-w-2xl">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">โปรไฟล์ของฉัน</h1>
+    <a href="page-edit.html"
+      class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl px-4 py-2">แก้ไขโปรไฟล์</a>
+  </div>
+
+  <div id="suspended-banner" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+    บัญชีของคุณถูกระงับการใช้งาน (SUSPENDED) — ติดต่อผู้ดูแลระบบหากคิดว่าไม่ถูกต้อง
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-start gap-5">
+    <img id="view-avatar" src="" alt="รูปโปรไฟล์"
+         class="w-20 h-20 rounded-full object-cover bg-gray-100 border border-gray-200">
+    <div class="text-sm space-y-1.5">
+      <p><span class="text-gray-500">คำนำหน้า (ไทย):</span> <span id="view-name-th-prefix" class="font-semibold"></span></p>
+      <p><span class="text-gray-500">ชื่อ-นามสกุล (ไทย):</span> <span id="view-name-th" class="font-semibold"></span></p>
+      <p><span class="text-gray-500">คำนำหน้า (อังกฤษ):</span> <span id="view-name-en-prefix"></span></p>
+      <p><span class="text-gray-500">ชื่อ-นามสกุล (อังกฤษ):</span> <span id="view-name-en"></span></p>
+      <p><span class="text-gray-500">อีเมล:</span> <span id="view-email" class="font-mono"></span></p>
+      <p><span class="text-gray-500">เบอร์โทร:</span> <span id="view-phone"></span></p>
+      <p><span class="text-gray-500">สังกัด:</span> <span id="view-dept"></span></p>
+      <p><span class="text-gray-500">ประเภทบัญชี:</span> <span id="view-type"></span></p>
+      <p><span class="text-gray-500">สถานะ:</span> <span id="view-status"></span></p>
+      <p><span class="text-gray-500">keycloak_sub:</span> <span id="view-keycloak-sub" class="font-mono text-xs"></span></p>
+      <p><span class="text-gray-500">บทบาท:</span> <span id="view-roles"></span></p>
+    </div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let me = loadData("m0_ac_me", seedMe);
+
+function render() {
+  document.getElementById("suspended-banner").classList.toggle("hidden", me.status !== "SUSPENDED");
+  document.getElementById("view-avatar").src = me.avatar_url;
+  document.getElementById("view-name-th-prefix").textContent = me.name_th_prefix || "-";
+  document.getElementById("view-name-th").textContent = `${me.name_th_first} ${me.name_th_last}`;
+  document.getElementById("view-name-en-prefix").textContent = me.name_en_prefix || "-";
+  document.getElementById("view-name-en").textContent = me.name_en_first && me.name_en_last ? `${me.name_en_first} ${me.name_en_last}` : "-";
+  document.getElementById("view-email").textContent = me.email;
+  document.getElementById("view-phone").textContent = me.phone;
+  document.getElementById("view-dept").textContent = me.dept_name;
+  document.getElementById("view-type").textContent = TYPE_TH[me.type];
+  document.getElementById("view-status").textContent = STATUS_TH[me.status];
+  document.getElementById("view-keycloak-sub").textContent = me.keycloak_sub || "-";
+  document.getElementById("view-roles").textContent = me.roles.map((r) => ROLE_TH[r] || r).join(", ");
+}
+
+function init() {
+  render();
+  notifyParentPage("view");
+}
+</script>
+</body>
+</html>

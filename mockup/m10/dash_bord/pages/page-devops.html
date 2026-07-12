@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M10 · DevOps</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Noto Sans Thai', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6">
+  <h1 class="text-2xl font-bold mb-1">DevOps & CI/CD (E6)</h1>
+  <p class="text-xs text-blue-600 mb-4">UC-15 (Docker + Helm) · UC-16 (K8s Deploy) · UC-17 (CI/CD Pipeline) · UC-18 (Observability) · UC-19 (Secret Management) + Terraform (IaC) — Pipeline และ Infrastructure Management</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h2 class="text-sm font-semibold mb-2">Docker + Helm</h2>
+      <p class="text-xs text-gray-500">Multi-stage build · Helm chart มาตรฐานใช้ซ้ำทุก service</p>
+      <div class="mt-2 text-xs text-green-700">✅ Dockerfile template พร้อม</div>
+      <div class="text-xs text-green-700">✅ Helm chart พร้อม (values.yaml)</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h2 class="text-sm font-semibold mb-2">Kubernetes</h2>
+      <p class="text-xs text-gray-500">Deployment, Service, Ingress (Traefik), HPA</p>
+      <div class="mt-2 text-xs text-green-700">✅ K8s manifests พร้อม</div>
+      <div class="text-xs text-green-700">✅ Namespace แยกต่อ service</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h2 class="text-sm font-semibold mb-2">Secret Management</h2>
+      <p class="text-xs text-gray-500">Sealed Secrets / External Secrets — ไม่ commit secret</p>
+      <div class="mt-2 text-xs text-green-700">✅ ไม่มี plain-text ใน git</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
+    <h2 class="text-sm font-semibold mb-3">CI/CD Pipeline Status</h2>
+    <div id="pipeline-list" class="text-xs space-y-1"></div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+    <h2 class="text-sm font-semibold mb-3">Observability</h2>
+    <div class="text-xs space-y-1 text-gray-600">
+      <div class="flex justify-between"><span>Loki (Log)</span><span>🟢 retention 30d</span></div>
+      <div class="flex justify-between"><span>Prometheus (Metrics)</span><span>🟢 retention 90d</span></div>
+      <div class="flex justify-between"><span>Grafana (Dashboard)</span><span>🟢 Active</span></div>
+    </div>
+  </div>
+
+  <!-- Terraform (IaC) -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mt-5">
+    <h2 class="text-sm font-semibold mb-3">Terraform (Infrastructure as Code)</h2>
+    <p class="text-xs text-gray-500 mb-3">จัดการ infrastructure ทั้งหมดผ่าน Terraform — version 1.9</p>
+    <div class="text-xs space-y-2 text-gray-600">
+      <div class="flex justify-between"><span>State Backend</span><span class="font-mono text-gray-500">MinIO (s3://erp-terraform-state/)</span></div>
+      <div class="flex justify-between"><span>Providers</span><span>kubectl, helm, keycloak, minio, random</span></div>
+      <div class="flex justify-between"><span>Modules</span><span>network, k8s, database, storage, monitoring, iam</span></div>
+      <div class="flex justify-between"><span>Env Workspaces</span><span>dev · staging · prod</span></div>
+      <div class="flex justify-between"><span>Resources Managed</span><span class="text-blue-600 font-semibold">47</span></div>
+      <div class="flex justify-between"><span>Last Plan</span><span class="text-green-600">✅ Clean (no drift)</span></div>
+    </div>
+  </div>
+
+  <script src="../shared.js"></script>
+  <script>
+    function init() {
+      notifyParentPage("devops");
+      const pipelines = loadData("pipelines", SEED_PIPELINES);
+      const STATUS_STYLE = { success: "text-green-600", failed: "text-red-600", running: "text-blue-600" };
+      document.getElementById("pipeline-list").innerHTML = pipelines.map(p =>
+        `<div class="flex justify-between border-b border-gray-100 pb-1">
+          <span class="font-semibold">${p.service}</span>
+          <span class="text-gray-400">${p.lastBuild}</span>
+          <span class="${STATUS_STYLE[p.status] || ''}">${p.status}</span>
+          <span class="font-mono text-gray-500">${p.version}</span>
+          <span class="text-gray-400">${p.env}</span>
+        </div>`
+      ).join("");
+    }
+    init();
+  </script>
+</body>
+</html>

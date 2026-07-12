@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · จัดสอบ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ScheduleDefense — UC-07/14/16 ═══ -->
+<div>
+  <a href="page-topics.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการหัวข้อ</a>
+  <h1 class="text-2xl font-bold mb-4">จัดสอบ</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-sm">หัวข้อ: <span id="sch-title" class="font-semibold"></span></p>
+    <p class="text-sm">กรรมการ (<code>defense_committee</code>): <span id="sch-committee"></span></p>
+    <p id="sch-slot-note" class="hidden text-xs text-gray-500">ช่วงเวลาที่กรรมการว่างตรงกัน (จาก UC-06): <span id="sch-slot-text" class="font-semibold text-gray-700"></span> — ยืนยันวันที่/เวลาจริงด้านล่าง</p>
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">ประเภทสอบ · <code>defense.type</code></label>
+        <select id="sch-type-edit" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="PROPOSAL">สอบเค้าโครง (PROPOSAL)</option>
+          <option value="PROGRESS">สอบความก้าวหน้า (PROGRESS)</option>
+          <option value="FINAL">สอบจบ (FINAL)</option>
+        </select></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">วันที่</label>
+        <input id="sch-date" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">เวลาเริ่ม</label>
+        <input id="sch-time" type="time" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">ระยะเวลา (นาที) · <code>duration_minutes</code></label>
+        <select id="sch-duration" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="60">60 นาที</option>
+          <option value="90">90 นาที</option>
+          <option value="120" selected>120 นาที (default)</option>
+          <option value="150">150 นาที</option>
+          <option value="180">180 นาที</option>
+        </select></div>
+      <div><label class="text-sm font-semibold text-gray-700">รูปแบบ · <code>mode</code></label>
+        <select id="sch-mode" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="ONSITE">ONSITE</option>
+          <option value="ONLINE">ONLINE</option>
+          <option value="HYBRID">HYBRID</option>
+        </select></div>
+    </div>
+    <div><label class="text-sm font-semibold text-gray-700">ห้องสอบ (<code>room_booking_ref</code> · M1 · Planning)</label>
+      <select id="sch-room" onchange="checkRoomConflict()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></select>
+      <p id="sch-room-error" class="text-xs text-red-600 hidden mt-1"></p>
+    </div>
+    <p class="text-xs text-gray-400">ระบบจริง: POST /planning/room-bookings (M1 API) → เก็บ room_booking_id (DD-M9-004)</p>
+    <p id="sch-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="confirmSchedule()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ยืนยันจัดสอบ → emit defense.scheduled</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let theses = loadData("m9_sc_theses", seedTheses);
+const qs = new URLSearchParams(location.search);
+const tid = Number(qs.get("tid"));
+const target = theses.find((x) => x.id === tid);
+const slot = qs.get("slot");
+let committeeAvailability = loadData("m9_sc_availability", {});
+
+function checkRoomConflict() {
+  const room = document.getElementById("sch-room").value;
+  const date = document.getElementById("sch-date").value; const time = document.getElementById("sch-time").value;
+  const err = document.getElementById("sch-room-error");
+  const conflict = theses.some((t) => t.defenses.some((d) => d.room === room && d.datetime === `${date} ${time}` && d.status !== "CANCELLED"));
+  if (conflict) { err.textContent = `ห้อง "${room}" มีสอบอื่นชนเวลานี้แล้ว — กรุณาเลือกห้อง/เวลาใหม่ (Alternative Flow UC-07)`; err.classList.remove("hidden"); }
+  else err.classList.add("hidden");
+}
+function confirmSchedule() {
+  const selectedType = document.getElementById("sch-type-edit").value;
+  const date = document.getElementById("sch-date").value; const time = document.getElementById("sch-time").value;
+  const room = document.getElementById("sch-room").value;
+  const duration = Number(document.getElementById("sch-duration").value);
+  const mode = document.getElementById("sch-mode").value;
+  const err = document.getElementById("sch-error");
+  if (!date || !time || !room) { err.textContent = "กรอกวันที่ เวลา และเลือกห้องให้ครบ"; err.classList.remove("hidden"); return; }
+  const datetime = `${date} ${time}`;
+  if (theses.some((t) => t.defenses.some((d) => d.room === room && d.datetime === datetime && d.status !== "CANCELLED"))) {
+    err.textContent = "ห้องนี้ถูกจองชนเวลานี้แล้ว — เลือกห้องหรือเวลาใหม่"; err.classList.remove("hidden"); return;
+  }
+  err.classList.add("hidden");
+  /* BR-M9-007: committee_availability slot ถูกใช้แล้วเมื่อ assign เข้า defense */
+  target.committee.forEach((id) => {
+    const slots = committeeAvailability[id] || [];
+    committeeAvailability[id] = slots.filter((s) => !s.includes(date));
+  });
+  saveData("m9_sc_availability", committeeAvailability);
+  /* ระบบจริง: POST /rooms/availability ตรวจว่าง แล้ว POST /rooms/bookings ที่ M1 · Planning (DD-M9-004) */
+  target.defenses.push({ type: selectedType, datetime, duration, mode, room, status: "SCHEDULED", result: null, due: true, scores: {} });
+  saveData("m9_sc_theses", theses);
+  alert(`ยืนยันจัดสอบแล้ว (${DEFENSE_TYPE_TH[selectedType]}) — emit defense.scheduled event ไปยัง M10 (Notification Service)`);
+  window.location.href = "page-topics.html";
+}
+
+function init() {
+  document.getElementById("sch-title").textContent = target.title;
+  document.getElementById("sch-committee").textContent = target.committee.map((id) => instrName(id) + " (" + COMMITTEE_ROLE_TH[(target.committeeRoles || {})[id] || "MEMBER"] + ")").join(", ");
+  document.getElementById("sch-slot-note").classList.toggle("hidden", !slot);
+  if (slot) document.getElementById("sch-slot-text").textContent = slot;
+  document.getElementById("sch-room").innerHTML = `<option value="">— เลือกห้อง —</option>` + MOCK_ROOMS.map((r) => `<option value="${r}">${r}</option>`).join("");
+  notifyParentPage("schedule");
+}
+</script>
+</body>
+</html>

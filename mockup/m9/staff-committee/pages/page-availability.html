@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · จัดการเวลาว่างสอบ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ CommitteeAvailability — UC-05 ═══ -->
+<div>
+  <button onclick="goBack()" class="text-sm text-gray-500 hover:text-gray-700 mb-3">← กลับ</button>
+  <h1 class="text-2xl font-bold mb-4">จัดการเวลาว่างสอบ</h1>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5 max-w-lg">
+    <p class="text-sm font-semibold mb-2">เวลาว่างของฉัน (<span id="avail-self-name"></span>)</p>
+    <p class="text-xs text-gray-400 mb-2">กำหนดช่วงเวลาที่ว่าง (start_datetime–end_datetime) · <code>committee_availability</code></p>
+    <div id="avail-self-slots" class="grid grid-cols-2 gap-2"></div>
+    <p class="text-xs text-gray-400 mt-2">คลิกเพื่อสลับ ว่าง/ไม่ว่าง — บันทึกอัตโนมัติ</p>
+  </div>
+
+  <div id="avail-overview-block" class="hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-4 max-w-lg">
+    <p class="text-sm font-semibold mb-2">ภาพรวมเวลาว่างกรรมการ — หัวข้อ: <span id="avail-title"></span></p>
+    <div id="avail-committee-rows" class="space-y-1 mb-3 text-sm"></div>
+    <div class="flex gap-2 mb-3">
+      <button id="avail-calc-btn" onclick="calcCommonAvailability()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2 disabled:bg-gray-200 disabled:text-gray-400">คำนวณเวลาว่างตรงกัน (UC-06)</button>
+      <button onclick="simulateCommitteeAvailability()" class="text-sm text-pink-700 hover:bg-pink-50 rounded-lg px-3 py-1.5 border border-pink-200">▶ จำลองกรรมการตั้งเวลาว่าง</button>
+    </div>
+    <p class="text-xs text-gray-400 mb-2">ปุ่มจำลอง: สุ่มให้กรรมการแต่ละคนเลือกช่วงเวลาว่าง 2-4 ช่วง เพื่อให้ระบบคำนวณเวลาว่างตรงกันได้</p>
+    <div id="avail-result" class="mt-3 space-y-1"></div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let theses = loadData("m9_sc_theses", seedTheses);
+const tid = Number(new URLSearchParams(location.search).get("tid")) || null;
+const target = tid ? theses.find((x) => x.id === tid) : null;
+let committeeAvailability = loadData("m9_sc_availability", {});
+
+function goBack() {
+  /* ถ้ากลับโดยที่ยังไม่ได้จัดสอบ ให้ล้างกรรมการที่ตั้งไว้ เพื่อให้ user เริ่มกระบวนการใหม่ (UC-04 → UC-05 → UC-06 → UC-07) */
+  if (target && target.committee && target.committee.length > 0) {
+    const hasScheduledDefense = target.defenses.some((d) => d.status === "SCHEDULED");
+    if (!hasScheduledDefense) { target.committee = []; target.committeeRoles = {}; saveData("m9_sc_theses", theses); }
+  }
+  const role = localStorage.getItem("m9_sc_role");
+  window.location.href = role === "committee" ? "page-score.html" : "page-topics.html";
+}
+function toggleMySlot(slot) {
+  const list = committeeAvailability[ME_INSTRUCTOR_ID] || [];
+  committeeAvailability[ME_INSTRUCTOR_ID] = list.includes(slot) ? list.filter((s) => s !== slot) : [...list, slot];
+  saveData("m9_sc_availability", committeeAvailability); render();
+}
+function simulateCommitteeAvailability() {
+  if (!target || !target.committee || target.committee.length === 0) { alert("ไม่มีกรรมการในหัวข้อนี้ — กรุณาแต่งตั้งกรรมการก่อน"); return; }
+  target.committee.forEach((id) => {
+    const count = 2 + Math.floor(Math.random() * 3);
+    const shuffled = [...CANDIDATE_SLOTS].sort(() => Math.random() - 0.5);
+    committeeAvailability[id] = shuffled.slice(0, count);
+  });
+  saveData("m9_sc_availability", committeeAvailability);
+  render();
+  alert(`จำลองกรรมการตั้งเวลาว่างเรียบร้อยแล้ว (สุ่ม ${target.committee.length} คน) — กด "คำนวณเวลาว่างตรงกัน (UC-06)" เพื่อดูผล`);
+}
+function calcCommonAvailability() {
+  const members = target.committee;
+  const sets = members.map((id) => committeeAvailability[id] || []);
+  const common = CANDIDATE_SLOTS.filter((slot) => sets.every((s) => s.includes(slot)));
+  const box = document.getElementById("avail-result");
+  if (common.length === 0) {
+    box.innerHTML = `<p class="text-xs text-red-600">ไม่พบช่วงเวลาที่กรรมการทุกคนว่างตรงกัน — ปรับกรรมการหรือให้กรรมการเพิ่มเวลาว่าง (Alternative Flow UC-06)</p>`;
+    return;
+  }
+  box.innerHTML = `<p class="text-xs text-gray-500 mb-1">ช่วงเวลาที่จัดสอบได้:</p>` + common.map((s) => `
+    <div class="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
+      <span class="text-sm">${s}</span>
+      <a href="page-schedule.html?tid=${target.id}&slot=${encodeURIComponent(s)}" class="text-pink-700 hover:bg-pink-50 rounded-lg px-2 py-1 text-xs">จัดสอบ</a>
+    </div>`).join("");
+}
+
+function render() {
+  document.getElementById("avail-self-name").textContent = instrName(ME_INSTRUCTOR_ID);
+  const mySlots = committeeAvailability[ME_INSTRUCTOR_ID] || [];
+  document.getElementById("avail-self-slots").innerHTML = CANDIDATE_SLOTS.map((s) => `
+    <button onclick="toggleMySlot('${s}')" class="text-xs border rounded-lg px-2 py-2
+      ${mySlots.includes(s) ? "bg-pink-100 border-pink-300 text-pink-700 font-semibold" : "border-gray-300 hover:bg-gray-50"}">${s} ${mySlots.includes(s) ? "· ว่าง" : ""}</button>`).join("");
+  const overviewBlock = document.getElementById("avail-overview-block");
+  if (target) {
+    overviewBlock.classList.remove("hidden");
+    document.getElementById("avail-title").textContent = target.title;
+    document.getElementById("avail-committee-rows").innerHTML = target.committee.map((id) => {
+      const n = (committeeAvailability[id] || []).length;
+      return `<div class="flex items-center justify-between"><span>${instrName(id)} (${COMMITTEE_ROLE_TH[(target.committeeRoles || {})[id] || "MEMBER"]})</span><span class="text-xs ${n ? "text-green-700" : "text-gray-400"}">${n} ช่วงเวลาที่บันทึกไว้</span></div>`;
+    }).join("");
+    document.getElementById("avail-calc-btn").disabled = target.committee.some((id) => !(committeeAvailability[id] || []).length);
+  } else overviewBlock.classList.add("hidden");
+}
+
+function init() { render(); notifyParentPage("availability"); }
+</script>
+</body>
+</html>

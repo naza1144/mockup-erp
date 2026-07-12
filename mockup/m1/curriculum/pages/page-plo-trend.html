@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · แนวโน้ม PLO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 21. PLO Trend — UC-A28 ═══ -->
+<div>
+  <a href="page-attainment.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">แนวโน้ม PLO (UC-A28)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+    <p class="text-sm text-gray-500">Line chart แนวโน้ม PLO attainment ย้อนหลัง 3-5 ปี</p>
+    <div id="pt-chart" class="space-y-3"></div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let programs = loadData("m1c_programs", seedPrograms);
+let ploAttainment = loadData("m1c_plo_attainment", seedPloAttainment);
+const pid = Number(new URLSearchParams(location.search).get("pid")) || programs[0].id;
+let curProgram = programs.find((p) => p.id === pid) || programs[0];
+
+function renderPloTrend() {
+  const years = ["2567","2568","2569"];
+  document.getElementById("pt-chart").innerHTML = (curProgram.plos || []).map((plo) => {
+    const vals = years.map((y) => ploAttainment[plo.plo_id]?.[y]).filter(Boolean);
+    const trend = vals.length >= 2 && vals[vals.length-1].score > vals[0].score ? "↑" : "↓";
+    return `<div class="border border-gray-200 rounded-xl p-3"><p class="text-sm font-semibold">${plo.code} <span class="text-xs text-gray-400">${trend}</span></p>
+      <div class="flex gap-4 mt-1">${years.map((y) => { const d = ploAttainment[plo.plo_id]?.[y]; return d ? `<div class="text-center"><p class="text-xs text-gray-400">${y}</p><p class="text-sm font-bold">${Math.round(d.score*100)}%</p></div>` : ""; }).join("")}</div></div>`;
+  }).join("");
+}
+
+function init() { renderPloTrend(); notifyParentPage("plo-trend"); }
+</script>
+</body>
+</html>

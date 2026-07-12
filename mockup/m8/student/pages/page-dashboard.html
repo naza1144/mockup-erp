@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 นักศึกษา · Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ StudentDashboard — UC-06 ═══ -->
+<div class="max-w-2xl">
+  <h1 class="text-2xl font-bold mb-4">Dashboard นักศึกษา</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-4">
+    <p class="text-sm font-semibold mb-1">ความก้าวหน้าชั่วโมงอบรม</p>
+    <div class="w-full bg-gray-100 rounded-full h-3 mb-1"><div id="hours-bar" class="bg-amber-500 h-3 rounded-full"></div></div>
+    <p class="text-xs text-gray-500"><span id="hours-text"></span> / 30 ชั่วโมง</p>
+  </div>
+  <div class="flex gap-2 mb-4">
+    <a href="page-training.html" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกการอบรม</a>
+    <button id="btn-apply-job" onclick="onDashboardApplyClick()" class="text-sm font-semibold rounded-xl px-4 py-2 border"></button>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-4">
+    <p class="text-sm font-semibold mb-2">ชุดจำลองสำหรับสาธิต</p>
+    <div class="flex flex-wrap gap-2">
+      <button onclick="simulateEligibilityPass()" class="text-sm font-semibold rounded-xl px-4 py-2 border border-green-200 text-green-700 hover:bg-green-50">ผ่าน 30 ชม. + คุณสมบัติวิชาการ</button>
+      <button onclick="simulatePlacement('APPROVED')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-amber-200 text-amber-700 hover:bg-amber-50">อนุมัติแล้ว</button>
+      <button onclick="simulatePlacement('INTERNING')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-blue-200 text-blue-700 hover:bg-blue-50">กำลังฝึกงาน</button>
+      <button onclick="simulatePlacement('COMPLETED')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-green-200 text-green-700 hover:bg-green-50">ฝึกงานเสร็จสิ้น</button>
+      <button onclick="simulatePlacement('PENDING_GRADE')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-purple-200 text-purple-700 hover:bg-purple-50">รอประเมินเกรด</button>
+    </div>
+  </div>
+  <div id="eligibility-note" class="text-xs space-y-1"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let me = loadData("m8_st_me", seedMe);
+let trainings = loadData("m8_st_trainings", seedTrainings);
+let application = loadData("m8_st_application", null);
+let academicOverride = loadData("m8_st_academic_override", null); /* null=pass(default), false=simulate fail */
+
+function approvedHours() { return trainings.filter((t) => t.status === "APPROVED").reduce((s, t) => s + t.approvedHours, 0); }
+function academicPass() { return academicOverride !== false; }
+
+function onDashboardApplyClick() {
+  if (application && !["REJECTED", "CANCELLED"].includes(application.status)) { window.location.href = "page-track.html"; return; }
+  window.location.href = "page-apply-job.html";
+}
+
+function todayText() { return new Date().toISOString().slice(0, 10); }
+function simulateEligibilityPass(silent = false) {
+  academicOverride = null;
+  trainings = [{ id: 1, topic: "อบรมความปลอดภัยในการทำงาน", reqHours: 30, approvedHours: 30, status: "APPROVED" }];
+  saveData("m8_st_academic_override", academicOverride);
+  saveData("m8_st_trainings", trainings);
+  if (!silent) alert("จำลองผ่านเกณฑ์แล้ว: ชั่วโมงอบรมสะสม 30 ชม. และผ่านคุณสมบัติวิชาการ");
+  render();
+}
+function ensureDemoApplication() {
+  if (application && !["REJECTED", "CANCELLED"].includes(application.status)) return;
+  const company = mockCompanies[0];
+  application = {
+    companyId: company.id,
+    companyName: company.name,
+    position: "Frontend Developer",
+    caregiver: "คุณสมศรี HR",
+    accommodation: "หอพักบริษัท",
+    emergencyName: "นางสมใจ ตั้งใจเรียน",
+    emergencyPhone: "081-234-5678",
+    startDate: "2026-08-01",
+    endDate: "2026-11-30",
+    status: "APPLIED",
+    history: [{ status: "APPLIED", date: todayText(), by: "นักศึกษา" }],
+  };
+}
+function simulatePlacement(status) {
+  simulateEligibilityPass(true);
+  ensureDemoApplication();
+  const flow = ["APPLIED", "APPROVED", "INTERNING", "COMPLETED", "PENDING_GRADE"];
+  const targetIdx = flow.indexOf(status);
+  const existing = new Set(application.history.map((h) => h.status));
+  flow.slice(1, targetIdx + 1).forEach((s) => {
+    if (!existing.has(s)) application.history.push({ status: s, date: todayText(), by: s === "APPROVED" ? "ผจก.รายวิชา" : "ระบบจำลอง" });
+  });
+  application.status = status;
+  saveData("m8_st_application", application);
+  alert("จำลองสถานะ Placement: " + STATUS_TH[status]);
+  window.location.href = "page-track.html";
+}
+
+/* จำลองสาธิต Alt Flow UC-08 (ไม่ผ่านคุณสมบัติวิชาการ) */
+function toggleAcademic() { academicOverride = academicOverride === false ? null : false; saveData("m8_st_academic_override", academicOverride); render(); }
+
+function render() {
+  const hrs = approvedHours();
+  document.getElementById("hours-bar").style.width = Math.min(100, hrs / 30 * 100) + "%";
+  document.getElementById("hours-text").textContent = hrs;
+
+  const hasActiveApp = application && !["REJECTED", "CANCELLED"].includes(application.status);
+  const btn = document.getElementById("btn-apply-job");
+  if (hasActiveApp) { btn.textContent = "ติดตามสถานะ Placement"; btn.className = "text-sm font-semibold rounded-xl px-4 py-2 border border-amber-300 text-amber-700 hover:bg-amber-50"; }
+  else {
+    const eligible = hrs >= 30 && academicPass();
+    btn.textContent = "สมัครงานสหกิจ";
+    btn.className = "text-sm font-semibold rounded-xl px-4 py-2 " + (eligible ? "bg-amber-600 hover:bg-amber-700 text-white border-transparent" : "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200");
+    btn.title = eligible ? "" : "ยังไม่ผ่านเกณฑ์ ดูรายละเอียดด้านล่าง";
+  }
+  document.getElementById("eligibility-note").innerHTML = `
+    <p class="${hrs >= 30 ? "text-green-700" : "text-red-600"}">${hrs >= 30 ? "✓" : "✕"} ชั่วโมงอบรมสะสม ${hrs}/30 ชม.${hrs < 30 ? ` (ขาดอีก ${30 - hrs} ชม.)` : ""}</p>
+    <p class="${academicPass() ? "text-green-700" : "text-red-600"}">${academicPass() ? "✓" : "✕"} คุณสมบัติวิชาการ (GPAX ${me.gpax}, หน่วยกิตสะสม ${me.credits}) — ${academicPass() ? "ผ่านเกณฑ์" : "ไม่ผ่านเกณฑ์ (จำลอง)"}</p>
+    <button onclick="toggleAcademic()" class="text-gray-400 hover:text-amber-700 underline mt-1">▶ จำลอง${academicPass() ? "ไม่ผ่าน" : "ผ่าน"}คุณสมบัติวิชาการ (สาธิต UC-08)</button>`;
+}
+
+function init() {
+  render();
+  notifyParentPage("dashboard");
+}
+</script>
+</body>
+</html>

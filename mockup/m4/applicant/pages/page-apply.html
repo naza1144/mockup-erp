@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 ผู้สมัคร · ฟอร์มสมัครเรียน</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800" onload="init()">
+
+<main class="max-w-2xl mx-auto p-6">
+  <!-- ═══ ApplyForm — UC-01 ═══ -->
+  <h1 class="text-2xl font-bold mb-4">ฟอร์มสมัครเรียน</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-sm font-semibold text-gray-700">ชื่อ-นามสกุล</label>
+        <input id="ap-name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-green-300">
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700">อีเมล</label>
+        <input id="ap-email" type="email" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-green-300">
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-sm font-semibold text-gray-700">เบอร์โทร</label>
+        <input id="ap-phone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-green-300">
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700">หลักสูตรที่สมัคร</label>
+        <select id="ap-program" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option>วิศวกรรมคอมพิวเตอร์</option><option>วิศวกรรมซอฟต์แวร์</option><option>เทคโนโลยีสารสนเทศ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-100 pt-4 space-y-3">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">เอกสารประกอบ (jpg/png/pdf ≤ 5MB)</p>
+      <div>
+        <label class="text-sm font-semibold text-gray-700">สำเนาวุฒิการศึกษาเดิม</label>
+        <input type="file" id="ap-file-transcript" accept=".jpg,.jpeg,.png,.pdf" onchange="pickFile('transcript')" class="text-sm block mt-1">
+        <p id="ap-file-transcript-name" class="text-xs text-green-700 mt-1"></p>
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700">สำเนาบัตรประชาชน</label>
+        <input type="file" id="ap-file-idcard" accept=".jpg,.jpeg,.png,.pdf" onchange="pickFile('idcard')" class="text-sm block mt-1">
+        <p id="ap-file-idcard-name" class="text-xs text-green-700 mt-1"></p>
+      </div>
+    </div>
+
+    <p id="ap-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="submitApplication()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ส่งใบสมัคร</button>
+  </div>
+</main>
+
+<script src="../shared.js"></script>
+<script>
+let app = loadData("m4_ap_application", null);
+let files = { transcript: null, idcard: null };
+
+/* ═══ UC-01 — validate ไฟล์ ≤5MB, jpg/png/pdf ผ่าน FileReader (simulate ตาม guide §7) ═══ */
+function pickFile(kind) {
+  const input = document.getElementById("ap-file-" + kind);
+  const label = document.getElementById("ap-file-" + kind + "-name");
+  const file = input.files[0];
+  if (!file) return;
+  const okType = ["image/jpeg", "image/png", "application/pdf"].includes(file.type);
+  if (!okType || file.size > 5 * 1024 * 1024) {
+    files[kind] = null; label.textContent = ""; label.className = "text-xs text-red-600 mt-1";
+    label.textContent = !okType ? "ไฟล์ต้องเป็น jpg/png/pdf" : "ไฟล์ใหญ่เกิน 5MB"; input.value = ""; return;
+  }
+  files[kind] = file.name; label.className = "text-xs text-green-700 mt-1"; label.textContent = `แนบแล้ว: ${file.name}`;
+}
+
+function submitApplication() {
+  const name = document.getElementById("ap-name").value.trim();
+  const email = document.getElementById("ap-email").value.trim();
+  const err = document.getElementById("ap-error");
+  if (!name || !email || !files.transcript || !files.idcard) {
+    err.textContent = "กรอกชื่อ-อีเมลให้ครบ และแนบเอกสารทั้ง 2 รายการก่อนส่งใบสมัคร (Alternative Flow UC-01)";
+    err.classList.remove("hidden"); return;
+  }
+  err.classList.add("hidden");
+  /* ระบบจริง: POST /applications — เก็บไฟล์แนบที่ Object Storage bucket student-files */
+  app = { name, email, phone: document.getElementById("ap-phone").value, program: document.getElementById("ap-program").value,
+    ref: "APP-" + Date.now().toString().slice(-6), stage: "APPLIED" };
+  saveData("m4_ap_application", app);
+  window.location.href = "page-confirmed.html";
+}
+
+function init() { notifyParentPage("apply"); }
+</script>
+</body>
+</html>

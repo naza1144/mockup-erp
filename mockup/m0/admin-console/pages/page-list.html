@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M0 Admin Console · รายการบัญชีผู้ใช้</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ACCOUNT_LIST — entry ของ Admin Console ═══ -->
+<div class="max-w-4xl">
+  <div class="mb-4">
+    <h1 class="text-2xl font-bold">รายการบัญชีผู้ใช้</h1>
+    <p class="text-xs text-gray-500"><span id="count"></span> บัญชี</p>
+  </div>
+  <div class="flex gap-2 mb-4">
+    <input id="q" oninput="render()" placeholder="ค้นหาชื่อ/อีเมล..."
+      class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-slate-300">
+    <select id="f-status" onchange="render()" class="border border-gray-300 rounded-lg px-2 py-2 text-sm">
+      <option value="">ทุกสถานะ</option>
+      <option value="ACTIVE">ใช้งานปกติ</option>
+      <option value="SUSPENDED">ถูกระงับ</option>
+      <option value="DEACTIVATED">พ้นสภาพ</option>
+    </select>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+        <tr>
+          <th class="text-left px-4 py-3">ชื่อ-นามสกุล</th>
+          <th class="text-left px-4 py-3">ประเภท</th>
+          <th class="text-left px-4 py-3">สถานะ</th>
+          <th class="text-left px-4 py-3">บทบาท</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let accounts = loadData("m0_admin_accounts", seedAccounts);
+let roles = loadData("m0_admin_roles", seedRoles);
+
+function roleName(code) { const r = roles.find((x) => x.code === code); return r ? r.name : code; }
+
+function render() {
+  const q = (document.getElementById("q")?.value ?? "").toLowerCase();
+  const fStatus = document.getElementById("f-status")?.value ?? "";
+  const list = accounts.filter((a) => {
+    const nameFull = fullNameTH(a) + " " + fullNameEN(a) + " " + a.email;
+    return nameFull.toLowerCase().includes(q) && (!fStatus || a.status === fStatus);
+  });
+  document.getElementById("count").textContent = list.length;
+  document.getElementById("rows").innerHTML = list.map((a) => `
+    <tr class="border-t border-gray-100 hover:bg-gray-50">
+      <td class="px-4 py-3">${fullNameTH(a)}<div class="text-xs text-gray-400 font-mono">${a.email}</div></td>
+      <td class="px-4 py-3 text-gray-500">${TYPE_TH[a.type]}</td>
+      <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[a.status]}">${STATUS_TH[a.status]}</span></td>
+      <td class="px-4 py-3 text-gray-500">${a.roles.map((r) => roleName(r.code)).join(", ") || "-"}</td>
+      <td class="px-4 py-3 text-right space-x-1 whitespace-nowrap">
+        <a href="page-status.html?id=${a.account_id}" class="text-slate-600 hover:bg-slate-50 rounded-lg px-2 py-1.5 text-xs">ประเภท/สถานะ</a>
+        <a href="page-assign.html?id=${a.account_id}" class="text-slate-600 hover:bg-slate-50 rounded-lg px-2 py-1.5 text-xs">จัดการ Role</a>
+        <a href="page-permission.html?id=${a.account_id}" class="text-slate-600 hover:bg-slate-50 rounded-lg px-2 py-1.5 text-xs">สิทธิ์ละเอียด</a>
+      </td>
+    </tr>`).join("") || `<tr><td colspan="5" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td></tr>`;
+}
+
+function init() {
+  render();
+  notifyParentPage("list");
+}
+</script>
+</body>
+</html>

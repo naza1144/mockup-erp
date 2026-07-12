@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M0 Admin Console · จัดการประเภท/สถานะบัญชี</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ MANAGE_STATUS — UC-07 ═══ -->
+<div class="max-w-4xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการบัญชีผู้ใช้</a>
+  <h1 class="text-2xl font-bold mb-4">จัดการประเภท/สถานะบัญชี</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-sm">บัญชี: <span id="ms-name" class="font-semibold"></span></p>
+    <div>
+      <label class="text-sm font-semibold text-gray-700">ประเภทบัญชี</label>
+      <select id="ms-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="STUDENT">นักศึกษา</option><option value="FACULTY">อาจารย์</option>
+        <option value="STAFF">เจ้าหน้าที่</option><option value="ADMIN">ผู้ดูแลระบบ</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-sm font-semibold text-gray-700">สถานะ</label>
+      <select id="ms-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="ACTIVE">ใช้งานปกติ</option><option value="SUSPENDED">ถูกระงับ (SUSPENDED)</option>
+        <option value="DEACTIVATED">พ้นสภาพ (DEACTIVATED)</option>
+      </select>
+    </div>
+    <p id="ms-progress" class="text-xs text-gray-500 hidden"></p>
+    <button id="ms-save-btn" onclick="saveStatus()" class="bg-slate-600 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let accounts = loadData("m0_admin_accounts", seedAccounts);
+const id = new URLSearchParams(location.search).get("id");
+const target = accounts.find((a) => a.account_id === id);
+
+/* ═══ UC-07 — เปลี่ยนประเภท/สถานะ · confirm + จำลอง Keycloak revoke retry ก่อนเป็น SUSPENDED ═══ */
+function saveStatus() {
+  const newType = document.getElementById("ms-type").value;
+  const newStatus = document.getElementById("ms-status").value;
+  const oldType = target.type;
+  const oldStatus = target.status;
+
+  /* DEACTIVATED เป็น terminal state — ตาม state machine */
+  if (oldStatus === "DEACTIVATED" && newStatus !== "DEACTIVATED") {
+    if (!confirm("บัญชีนี้อยู่ในสถานะ DEACTIVATED (terminal state) — ไม่ควรเปลี่ยนกลับ ต้องการดำเนินการต่อหรือไม่?")) return;
+  }
+
+  const finish = () => {
+    const changes = [];
+    if (oldType !== newType) changes.push(`type: ${oldType} → ${newType}`);
+    if (oldStatus !== newStatus) changes.push(`status: ${oldStatus} → ${newStatus}`);
+
+    target.type = newType;
+    target.status = newStatus;
+    target.updated_at = new Date().toISOString();
+    saveData("m0_admin_accounts", accounts);
+
+    /* BR-M0-005: บันทึก audit log */
+    if (changes.length > 0) {
+      addAudit(
+        ADMIN_ID,
+        "status.changed",
+        target.account_id,
+        { type: oldType, status: oldStatus },
+        { type: newType, status: newStatus }
+      );
+    }
+
+    alert(`อัปเดตประเภท/สถานะแล้ว\n\n📋 Audit log (identity.account_audit):\n- action: status.changed\n- target: ${fullNameTH(target)}\n- ${changes.join("\n- ")}\n\n※ ดู Audit Log ได้จากเมนู`);
+    window.location.href = "page-list.html";
+  };
+
+  if (newStatus === "SUSPENDED" && oldStatus !== "SUSPENDED") {
+    if (!confirm("บัญชีนี้จะไม่สามารถใช้ token เดิมเข้าระบบได้ภายใน 60 วินาที — ยืนยันระงับหรือไม่?")) return;
+    const btn = document.getElementById("ms-save-btn");
+    const progress = document.getElementById("ms-progress");
+    btn.disabled = true; btn.textContent = "กำลังเรียก Keycloak...";
+    progress.classList.remove("hidden"); progress.textContent = "กำลัง revoke token กับ Keycloak (retry 1/3)...";
+    /* ระบบจริง: PATCH /accounts/{id}/status → เรียก Keycloak revoke token API + เพิ่มเข้า Redis blacklist */
+    setTimeout(() => {
+      progress.textContent = "revoke สำเร็จ — เพิ่มเข้า Redis blacklist แล้ว (จำลอง) — emit event account.suspended";
+      setTimeout(() => { btn.disabled = false; btn.textContent = "บันทึก"; progress.classList.add("hidden"); finish(); }, 700);
+    }, 900);
+    return;
+  }
+  finish();
+}
+
+function init() {
+  document.getElementById("ms-name").textContent = fullNameTH(target);
+  document.getElementById("ms-type").value = target.type;
+  document.getElementById("ms-status").value = target.status;
+  notifyParentPage("status");
+}
+</script>
+</body>
+</html>

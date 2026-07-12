@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 Planning · ขอแก้ไข Section หลังเผยแพร่</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<a href="page-publish.html" class="text-sm text-gray-500 hover:text-gray-700 mb-4 flex items-center gap-1">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+  กลับไปหน้าเผยแพร่
+</a>
+<h1 class="text-2xl font-bold mb-2 text-gray-800">ขอแก้ไข Section หลังเผยแพร่</h1>
+<p class="text-sm text-gray-500 mb-6">การใช้สิทธิ์แก้ไขต้องระบุเหตุผลประกอบการพิจารณาของคณะกรรมการ</p>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-lg space-y-4">
+  <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+    <p class="text-xs text-gray-500 uppercase tracking-wide">Section ที่ต้องการแก้ไข</p>
+    <p id="er-title" class="text-lg font-bold text-gray-800 mt-1"></p>
+  </div>
+  <div>
+    <label class="block text-sm font-semibold text-gray-700 mb-1">เหตุผลการขอแก้ไข <span class="text-red-500">*</span></label>
+    <textarea id="er-reason" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-teal-500 outline-none resize-none" placeholder="ระบุรายละเอียดปัญหา หรือเหตุผลที่จำเป็นต้องเปลี่ยน..."></textarea>
+  </div>
+  <p id="er-error" class="text-xs text-red-600 hidden bg-red-50 p-2 rounded border border-red-100">⚠ ต้องระบุเหตุผลก่อนส่งคำขอ (Alternative Flow UC-B14)</p>
+  <div class="pt-2">
+    <button onclick="submitEditRequest()" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl px-4 py-2.5 shadow-sm transition-transform active:scale-95">ส่งคำขอแก้ไข</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let sections = loadData("m1p_sections", seedSections);
+let editRequests = loadData("m1p_edit_requests", []);
+const curSectionId = Number(new URLSearchParams(location.search).get("id"));
+const curSection = sections.find((s) => s.id === curSectionId);
+
+function submitEditRequest() {
+  const reason = document.getElementById("er-reason").value.trim();
+  const err = document.getElementById("er-error");
+  if (!reason) { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  editRequests.push({ id: Date.now(), sectionId: curSection.id, reason, status: "PENDING", requestedAt: new Date().toISOString().slice(0, 10) });
+  saveData("m1p_edit_requests", editRequests);
+  alert("ส่งคำขอแก้ไขแล้ว"); window.location.href = "page-publish.html";
+}
+
+function init() {
+  if (curSection) document.getElementById("er-title").textContent = `${curSection.courseCode} (Sec ${curSection.sec})`;
+  notifyParentPage("edit-request");
+}
+</script>
+</body>
+</html>

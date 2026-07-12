@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 งานทะเบียน · นัดหมายสัมภาษณ์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ScheduleInterview — DOCUMENT_REVIEW → INTERVIEW_SCHEDULED ═══ -->
+<div class="max-w-4xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการใบสมัคร</a>
+  <h1 class="text-2xl font-bold mb-4">นัดหมายสัมภาษณ์</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-sm">ผู้สมัคร: <span id="si-name" class="font-semibold"></span> (สถานะ: <span id="si-status" class="font-semibold"></span>)</p>
+
+    <!-- กรรมการสัมภาษณ์ -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">กรรมการสัมภาษณ์ (interviewer_id) <span class="text-red-500">*</span></label>
+      <select id="si-interviewer" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="">— เลือกกรรมการ —</option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">soft FK → <code>faculty.instructor.instructor_id</code> (DD-M4-001)</p>
+    </div>
+
+    <!-- วันเวลา -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">วันเวลาสัมภาษณ์ (scheduled_at) <span class="text-red-500">*</span></label>
+      <input id="si-datetime" type="datetime-local" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+    </div>
+
+    <!-- รูปแบบ -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">รูปแบบ (mode)</label>
+      <select id="si-mode" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="ONSITE">ONSITE (สัมภาษณ์ onsite)</option>
+        <option value="ONLINE">ONLINE (สัมภาษณ์ออนไลน์)</option>
+      </select>
+    </div>
+
+    <!-- ลิงก์ประชุม (ถ้า ONLINE) -->
+    <div id="si-url-group" class="hidden">
+      <label class="text-sm font-semibold text-gray-700">ลิงก์ประชุม (meeting_url)</label>
+      <input id="si-url" placeholder="https://meet.google.com/..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+    </div>
+
+    <p id="si-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="saveSchedule()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกนัดหมาย → INTERVIEW_SCHEDULED</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let applications = loadData("m4_rb_applications", seedApplications);
+let interviews = loadData("m4_rb_interviews", seedInterviews);
+const qs = new URLSearchParams(location.search);
+const appId = qs.get("appId");
+let target = applications.find((a) => a.application_id === appId);
+
+/* ═══ Schedule Interview — INSERT registry.interview + UPDATE application.status → INTERVIEW_SCHEDULED ═══ */
+function saveSchedule() {
+  const interviewer = document.getElementById("si-interviewer").value;
+  const datetime = document.getElementById("si-datetime").value;
+  const mode = document.getElementById("si-mode").value;
+  const url = document.getElementById("si-url").value;
+  const err = document.getElementById("si-error");
+
+  if (!interviewer) { err.textContent = "กรุณาเลือกกรรมการสัมภาษณ์"; err.classList.remove("hidden"); return; }
+  if (!datetime) { err.textContent = "กรุณาเลือกวันเวลาสัมภาษณ์"; err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+
+  /* ระบบจริง: INSERT registry.interview + UPDATE application.status → INTERVIEW_SCHEDULED */
+  const newInterviewId = "iv-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+  interviews.push({
+    interview_id: newInterviewId,
+    application_id: appId,
+    interviewer_id: interviewer,
+    scheduled_at: new Date(datetime).toISOString(),
+    mode: mode,
+    meeting_url: mode === "ONLINE" ? url : null,
+    score: null,
+    result: null,
+    remarks: null
+  });
+  target.status = "INTERVIEW_SCHEDULED";
+  target.updated_at = new Date().toISOString();
+
+  saveData("m4_rb_applications", applications);
+  saveData("m4_rb_interviews", interviews);
+
+  alert(
+    "✅ นัดหมายสัมภาษณ์เรียบร้อย (จำลอง)\n\n" +
+    "• INSERT registry.interview\n" +
+    "• UPDATE application.status → INTERVIEW_SCHEDULED\n" +
+    "• ระบบจริง: publish NATS event student.interview_scheduled\n" +
+    "• Audit log (M10) บันทึกการดำเนินการ"
+  );
+  location.href = "page-list.html";
+}
+
+function init() {
+  if (target) {
+    const acct = mockAccounts[target.account_id];
+    document.getElementById("si-name").textContent = acct ? acct.name_th_first + " " + acct.name_th_last : target.account_id;
+    document.getElementById("si-status").textContent = STATUS_TH[target.status];
+
+    /* Populate interviewer select */
+    document.getElementById("si-interviewer").innerHTML = `<option value="">— เลือกกรรมการ —</option>` +
+      Object.values(mockInstructors)
+        .filter((i) => i.status === "FULL_TIME")
+        .map((i) => `<option value="${i.instructor_id}">${i.name}</option>`).join("");
+  }
+
+  /* Toggle meeting URL field based on mode */
+  document.getElementById("si-mode").addEventListener("change", function() {
+    document.getElementById("si-url-group").classList.toggle("hidden", this.value !== "ONLINE");
+  });
+
+  notifyParentPage("list");
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 นักศึกษา · กรอก Metadata วิทยานิพนธ์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ FillMetadata — UC-20 ═══ -->
+<div class="max-w-2xl">
+  <a href="page-submit-doc.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">กรอก Metadata วิทยานิพนธ์</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+    <div><label class="text-sm font-semibold text-gray-700">บทคัดย่อ (ไทย)</label>
+      <textarea id="md-abstract-th" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">บทคัดย่อ (อังกฤษ)</label>
+      <textarea id="md-abstract-en" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">Keywords (คั่นด้วย ,)</label>
+        <input id="md-keywords" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ปีที่จบ</label>
+        <input id="md-year" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+    <p id="md-error" class="text-xs text-red-600 hidden">กรอกให้ครบทุกช่องก่อนบันทึก</p>
+    <button onclick="saveMetadata()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก Metadata</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let thesis = loadData("m9_st_thesis", null);
+let repo = loadData("m9_st_repo", seedRepo);
+
+function saveMetadata() {
+  const abTh = document.getElementById("md-abstract-th").value.trim();
+  const abEn = document.getElementById("md-abstract-en").value.trim();
+  const kw = document.getElementById("md-keywords").value.trim();
+  const year = document.getElementById("md-year").value;
+  const err = document.getElementById("md-error");
+  if (!abTh || !abEn || !kw || !year) { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  thesis.metadata = { abstractTh: abTh, abstractEn: abEn, keywords: kw, year };
+  saveData("m9_st_thesis", thesis);
+  repo.push({ title: thesis.titleTh, year: Number(year), keywords: kw });
+  saveData("m9_st_repo", repo);
+  alert("บันทึก Metadata แล้ว — เข้าสู่คลังวิทยานิพนธ์");
+  window.location.href = "page-repository.html";
+}
+
+function init() { notifyParentPage("metadata"); }
+</script>
+</body>
+</html>

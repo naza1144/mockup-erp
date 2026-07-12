@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 งานทะเบียน · บันทึกผลสัมภาษณ์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ RecordInterviewResult — INTERVIEW_SCHEDULED → INTERVIEW_PASSED/FAILED ═══ -->
+<div class="max-w-4xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการใบสมัคร</a>
+  <h1 class="text-2xl font-bold mb-4">บันทึกผลสัมภาษณ์</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-sm">ผู้สมัคร: <span id="ri-name" class="font-semibold"></span></p>
+    <p class="text-xs text-gray-500">กรรมการ: <span id="ri-interviewer"></span> · วันที่: <span id="ri-scheduled"></span></p>
+
+    <!-- คะแนน -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">คะแนน (score) 0-100 <span class="text-red-500">*</span></label>
+      <input id="ri-score" type="number" min="0" max="100" step="0.5" placeholder="เช่น 85.50"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+    </div>
+
+    <!-- ผล -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">ผลการสัมภาษณ์ (result) <span class="text-red-500">*</span></label>
+      <select id="ri-result" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="">— เลือกผล —</option>
+        <option value="PASS">PASS (ผ่าน)</option>
+        <option value="FAIL">FAIL (ไม่ผ่าน)</option>
+      </select>
+    </div>
+
+    <!-- ความเห็น -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">ความเห็น (remarks)</label>
+      <textarea id="ri-remarks" rows="3" placeholder="ความเห็นของกรรมการ..."
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea>
+    </div>
+
+    <p id="ri-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="saveRecord()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกผลสัมภาษณ์</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let applications = loadData("m4_rb_applications", seedApplications);
+let interviews = loadData("m4_rb_interviews", seedInterviews);
+const qs = new URLSearchParams(location.search);
+const appId = qs.get("appId");
+
+let target = applications.find((a) => a.application_id === appId);
+let interview = interviews.find((i) => i.application_id === appId);
+
+/* ═══ Record Interview Result — UPDATE interview + UPDATE application.status ═══ */
+function saveRecord() {
+  const score = parseFloat(document.getElementById("ri-score").value);
+  const result = document.getElementById("ri-result").value;
+  const remarks = document.getElementById("ri-remarks").value.trim();
+  const err = document.getElementById("ri-error");
+
+  if (isNaN(score) || score < 0 || score > 100) {
+    err.textContent = "กรุณากรอกคะแนนระหว่าง 0-100"; err.classList.remove("hidden"); return;
+  }
+  if (!result) {
+    err.textContent = "กรุณาเลือกผลการสัมภาษณ์ (PASS/FAIL)"; err.classList.remove("hidden"); return;
+  }
+  err.classList.add("hidden");
+
+  /* ระบบจริง: UPDATE registry.interview SET score, result, remarks + UPDATE application.status */
+  if (interview) {
+    interview.score = score;
+    interview.result = result;
+    interview.remarks = remarks || null;
+    interview.updated_at = new Date().toISOString();
+  }
+
+  target.status = result === "PASS" ? "INTERVIEW_PASSED" : "INTERVIEW_FAILED";
+  target.updated_at = new Date().toISOString();
+
+  saveData("m4_rb_applications", applications);
+  saveData("m4_rb_interviews", interviews);
+
+  alert(
+    "✅ บันทึกผลสัมภาษณ์เรียบร้อย (จำลอง)\n\n" +
+    "• UPDATE registry.interview: score=" + score + ", result=" + result + "\n" +
+    "• UPDATE application.status → " + target.status + "\n" +
+    "• ระบบจริง: publish NATS event student.interview_result\n" +
+    "• Audit log (M10) บันทึกการดำเนินการ"
+  );
+  location.href = "page-list.html";
+}
+
+function init() {
+  if (target) {
+    const acct = mockAccounts[target.account_id];
+    document.getElementById("ri-name").textContent = acct ? acct.name_th_first + " " + acct.name_th_last : target.account_id;
+  }
+  if (interview) {
+    const instr = mockInstructors[interview.interviewer_id];
+    document.getElementById("ri-interviewer").textContent = instr ? instr.name : interview.interviewer_id;
+    document.getElementById("ri-scheduled").textContent = interview.scheduled_at ? new Date(interview.scheduled_at).toLocaleString("th-TH") : "-";
+  }
+  notifyParentPage("list");
+}
+</script>
+</body>
+</html>

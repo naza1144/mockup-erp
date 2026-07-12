@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · ตรวจสอบ Milestone + เอกสาร</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ApproveMilestone + DocumentReview — UC-11/12 ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">ตรวจสอบ Milestone + เอกสาร</h1>
+  <p class="text-xs text-gray-500 mb-3">
+    ระบบจริง: อัปเดต <code>milestone.status</code>, <code>approved_by</code> (soft FK→faculty.instructor), <code>approved_at</code> ·
+    เอกสาร <code>thesis_document</code> เก็บที่ MinIO bucket <code>thesis-files</code> (DD-M9-005)
+  </p>
+  <div id="ma-list" class="space-y-3"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let theses = loadData("m9_sc_theses", seedTheses);
+
+function approveMilestone(tid, name) {
+  const t = theses.find((x) => x.id === tid); const m = t.milestones.find((x) => x.name === name);
+  m.status = "APPROVED"; m.approved_by = ME_INSTRUCTOR_ID; m.approved_at = new Date().toISOString();
+  saveData("m9_sc_theses", theses); render();
+}
+function reviseMilestone(tid, name) {
+  const comment = prompt("ระบุความเห็นให้นักศึกษาแก้ไข:");
+  if (comment === null) return;
+  const t = theses.find((x) => x.id === tid); const m = t.milestones.find((x) => x.name === name);
+  m.status = "NEEDS_REVISION"; m.comment = comment || "กรุณาแก้ไข"; m.approved_by = ME_INSTRUCTOR_ID; m.approved_at = new Date().toISOString();
+  saveData("m9_sc_theses", theses); render();
+}
+function approveDoc(tid, docIdx) {
+  const t = theses.find((x) => x.id === tid);
+  t.documents[docIdx].status = "APPROVED";
+  saveData("m9_sc_theses", theses); render();
+}
+function rejectDoc(tid, docIdx) {
+  const comment = prompt("ระบุความเห็นให้แก้ไขเอกสาร:");
+  if (comment === null) return;
+  const t = theses.find((x) => x.id === tid);
+  t.documents[docIdx].status = "REJECTED"; t.documents[docIdx].comment = comment;
+  saveData("m9_sc_theses", theses); render();
+}
+
+function render() {
+  const maRows = [];
+  theses.filter((t) => ["APPROVED", "TOPIC_APPROVED", "IN_PROGRESS", "PROPOSAL_PASSED"].includes(t.status)).forEach((t) => {
+    t.milestones.forEach((m) => {
+      const relatedDocs = (t.documents || []).filter((d) => {
+        const milestoneDocMap = { "Proposal": "PROPOSAL", "บทที่ 1-3": "FULL_THESIS", "ร่างเล่ม": "FULL_THESIS" };
+        const expectedDocType = milestoneDocMap[m.name];
+        return !expectedDocType || d.doc_type === expectedDocType;
+      });
+      maRows.push(`
+        <div class="bg-white rounded-xl border border-gray-200 p-3">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <p class="text-sm font-semibold">${t.student} — ${m.name}</p>
+              <p class="text-xs text-gray-400">กำหนดส่ง: ${m.due_date || "-"}</p>
+            </div>
+            <div class="space-x-1">
+              ${m.status === "PENDING_REVIEW"
+                ? `<button onclick="approveMilestone(${t.id},'${m.name}')" class="text-green-700 hover:bg-green-50 rounded-lg px-2 py-1 text-xs border border-green-200">✓ อนุมัติ</button>
+                   <button onclick="reviseMilestone(${t.id},'${m.name}')" class="text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 text-xs border border-red-200">✕ ขอแก้ไข</button>`
+                : `<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${MS_BADGE[m.status] || "bg-gray-100 text-gray-500"}">${MS_TH[m.status] || m.status}</span>`}
+            </div>
+          </div>
+          <div class="border-t border-gray-100 pt-2 mt-1">
+            <p class="text-xs font-semibold text-gray-500 mb-1">📄 เอกสารที่นักศึกษาส่ง (thesis_document):</p>
+            ${relatedDocs.length > 0
+              ? relatedDocs.map((d) => {
+                  const globalIdx = (t.documents || []).indexOf(d);
+                  const docStatusBadge = d.status === "APPROVED" ? "bg-green-100 text-green-700" : d.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700";
+                  const docStatusTh = d.status === "APPROVED" ? "อนุมัติ" : d.status === "REJECTED" ? "ตีกลับ" : "รอตรวจ";
+                  return `<div class="flex items-center justify-between text-xs ml-2 mb-1 p-1.5 bg-gray-50 rounded-lg">
+                    <div>
+                      <span class="font-medium">${d.original_filename}</span>
+                      <span class="text-gray-400 ml-1">(${d.doc_type} v${d.version})</span>
+                      <span class="text-gray-400 ml-1">· ${(d.file_size_bytes / 1024 / 1024).toFixed(1)} MB</span>
+                      <span class="text-gray-400 ml-1">· อัปโหลด: ${new Date(d.uploaded_at).toLocaleString("th-TH")}</span>
+                      <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${docStatusBadge} ml-2">${docStatusTh}</span>
+                    </div>
+                    <div class="space-x-1 shrink-0">
+                      <a href="page-doc-preview.html?tid=${t.id}&doc=${globalIdx}" class="text-blue-600 hover:bg-blue-50 rounded-lg px-2 py-1">👁 ดูเอกสาร</a>
+                      ${d.status === "PENDING_REVIEW"
+                        ? `<button onclick="approveDoc(${t.id},${globalIdx})" class="text-green-700 hover:bg-green-50 rounded-lg px-2 py-1">✓ อนุมัติ</button>
+                           <button onclick="rejectDoc(${t.id},${globalIdx})" class="text-red-600 hover:bg-red-50 rounded-lg px-2 py-1">✕ ตีกลับ</button>`
+                        : ""}
+                    </div>
+                  </div>`;
+                }).join("")
+              : `<p class="text-xs text-gray-400 ml-2">ยังไม่มีเอกสารที่นักศึกษาส่งสำหรับ milestone นี้</p>`}
+          </div>
+        </div>`);
+    });
+  });
+  document.getElementById("ma-list").innerHTML = maRows.join("") || `<p class="text-sm text-gray-400 text-center py-8">ไม่มี milestone รอตรวจ</p>`;
+}
+
+function init() { render(); notifyParentPage("milestone-approve"); }
+</script>
+</body>
+</html>

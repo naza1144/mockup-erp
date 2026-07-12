@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 นักศึกษา · ติดตามสถานะ Placement</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ TrackPlacement — UC-11 ═══ -->
+<div class="max-w-2xl">
+  <a href="page-dashboard.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">ติดตามสถานะ Placement</h1>
+  <div id="track-empty" class="hidden text-sm text-gray-400 text-center py-10">ยังไม่มีข้อมูลการฝึกงาน</div>
+  <div id="track-content">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-4">
+      <p class="text-sm mb-3">บริษัท: <span id="tk-company" class="font-semibold"></span> · ตำแหน่ง: <span id="tk-position"></span></p>
+      <ol id="tk-steps" class="space-y-2 text-sm mb-3"></ol>
+      <div id="tk-history" class="text-xs text-gray-500 space-y-1"></div>
+    </div>
+    <div class="space-x-2">
+      <a id="tk-cancel-btn" href="page-cancel.html" class="hidden text-sm text-red-600 hover:bg-red-50 rounded-lg px-3 py-1.5 border border-red-200">ยกเลิกการฝึก</a>
+      <a id="tk-report-btn" href="page-weekly.html" class="hidden bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ส่งรายงานรายสัปดาห์</a>
+    </div>
+    <div class="mt-4 bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-sm font-semibold mb-2">จำลองสถานะ Placement</p>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="simulatePlacement('APPROVED')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-amber-200 text-amber-700 hover:bg-amber-50">อนุมัติแล้ว รอเริ่มฝึกงาน</button>
+        <button onclick="simulatePlacement('INTERNING')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-blue-200 text-blue-700 hover:bg-blue-50">กำลังฝึกงาน</button>
+        <button onclick="simulatePlacement('COMPLETED')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-green-200 text-green-700 hover:bg-green-50">ฝึกงานเสร็จสิ้น</button>
+        <button onclick="simulatePlacement('PENDING_GRADE')" class="text-sm font-semibold rounded-xl px-4 py-2 border border-purple-200 text-purple-700 hover:bg-purple-50">รอประเมินเกรด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let trainings = loadData("m8_st_trainings", seedTrainings);
+let application = loadData("m8_st_application", null);
+let weeklyReports = loadData("m8_st_weekly", []);
+let academicOverride = loadData("m8_st_academic_override", null); /* null=pass(default), false=simulate fail */
+
+function todayText() { return new Date().toISOString().slice(0, 10); }
+function simulateEligibilityPass(silent = false) {
+  academicOverride = null;
+  trainings = [{ id: 1, topic: "อบรมความปลอดภัยในการทำงาน", reqHours: 30, approvedHours: 30, status: "APPROVED" }];
+  saveData("m8_st_academic_override", academicOverride);
+  saveData("m8_st_trainings", trainings);
+  if (!silent) alert("จำลองผ่านเกณฑ์แล้ว: ชั่วโมงอบรมสะสม 30 ชม. และผ่านคุณสมบัติวิชาการ");
+}
+function ensureDemoApplication() {
+  if (application && !["REJECTED", "CANCELLED"].includes(application.status)) return;
+  const company = mockCompanies[0];
+  application = {
+    companyId: company.id,
+    companyName: company.name,
+    position: "Frontend Developer",
+    caregiver: "คุณสมศรี HR",
+    accommodation: "หอพักบริษัท",
+    emergencyName: "นางสมใจ ตั้งใจเรียน",
+    emergencyPhone: "081-234-5678",
+    startDate: "2026-08-01",
+    endDate: "2026-11-30",
+    status: "APPLIED",
+    history: [{ status: "APPLIED", date: todayText(), by: "นักศึกษา" }],
+  };
+}
+function simulatePlacement(status) {
+  simulateEligibilityPass(true);
+  ensureDemoApplication();
+  const flow = ["APPLIED", "APPROVED", "INTERNING", "COMPLETED", "PENDING_GRADE"];
+  const targetIdx = flow.indexOf(status);
+  const existing = new Set(application.history.map((h) => h.status));
+  flow.slice(1, targetIdx + 1).forEach((s) => {
+    if (!existing.has(s)) application.history.push({ status: s, date: todayText(), by: s === "APPROVED" ? "ผจก.รายวิชา" : "ระบบจำลอง" });
+  });
+  application.status = status;
+  saveData("m8_st_application", application);
+  alert("จำลองสถานะ Placement: " + STATUS_TH[status]);
+  render();
+}
+
+function render() {
+  document.getElementById("track-empty").classList.toggle("hidden", !!application);
+  document.getElementById("track-content").classList.toggle("hidden", !application);
+  if (application) {
+    document.getElementById("tk-company").textContent = application.companyName;
+    document.getElementById("tk-position").textContent = application.position;
+    const isBranch = ["REJECTED", "CANCELLED"].includes(application.status);
+    const curIdx = STEP_ORDER.indexOf(application.status);
+    document.getElementById("tk-steps").innerHTML = isBranch
+      ? `<li class="text-red-600 font-semibold">${STATUS_TH[application.status]}</li>`
+      : STEP_ORDER.map((s, i) => `<li class="flex items-center gap-2 ${i <= curIdx ? "text-gray-800" : "text-gray-400"}">
+          <span class="w-5 h-5 rounded-full flex items-center justify-center text-xs ${i <= curIdx ? "bg-amber-100 text-amber-700" : "bg-gray-100"}">${i <= curIdx ? "✓" : i + 1}</span>${STATUS_TH[s]}</li>`).join("");
+    document.getElementById("tk-history").innerHTML = application.history.map((h) => `<p>${h.date} — ${STATUS_TH[h.status]} (โดย ${h.by})</p>`).join("");
+    document.getElementById("tk-cancel-btn").classList.toggle("hidden", !["APPROVED", "INTERNING"].includes(application.status));
+    document.getElementById("tk-report-btn").classList.toggle("hidden", application.status !== "INTERNING");
+  }
+}
+
+function init() {
+  render();
+  notifyParentPage("track");
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 งานทะเบียน · รายการใบสมัคร</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ AppList — entry ═══ -->
+<div class="max-w-5xl">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-2xl font-bold">รายการใบสมัคร</h1>
+      <p class="text-xs text-gray-500"><span id="count"></span> รายการ</p>
+    </div>
+    <button onclick="location.href='page-bulk.html'"
+      class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">นำเข้าใบสมัครแบบชุด</button>
+  </div>
+  <input id="q" oninput="render()" placeholder="ค้นหาชื่อ/อีเมล..."
+    class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 mb-4 focus:outline-none focus:ring-2 focus:ring-green-300">
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+        <tr>
+          <th class="text-left px-4 py-3">ชื่อ-นามสกุล</th>
+          <th class="text-left px-4 py-3">หลักสูตร</th>
+          <th class="text-left px-4 py-3">สถานะใบสมัคร</th>
+          <th class="text-left px-4 py-3">ผลสัมภาษณ์</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let applications = loadData("m4_rb_applications", seedApplications);
+let interviews = loadData("m4_rb_interviews", seedInterviews);
+
+function openImportStudent(appId) {
+  const target = applications.find((a) => a.application_id === appId);
+  if (!target || target.status !== "INTERVIEW_PASSED" || target.imported) return;
+  location.href = "page-import-student.html?appId=" + encodeURIComponent(appId);
+}
+
+function render() {
+  const q = (document.getElementById("q")?.value ?? "").toLowerCase();
+  const list = applications.filter((a) => {
+    const acct = mockAccounts[a.account_id];
+    const name = acct ? acct.name_th_first + " " + acct.name_th_last : a.account_id;
+    const email = acct ? acct.email : "";
+    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
+  });
+  document.getElementById("count").textContent = list.length;
+
+  document.getElementById("rows").innerHTML = list.map((a) => {
+    const acct = mockAccounts[a.account_id];
+    const prog = mockPrograms[a.program_id];
+    const name = acct ? acct.name_th_first + " " + acct.name_th_last : a.account_id;
+    const email = acct ? acct.email : "";
+    const pname = prog ? prog.name_th : a.program_id;
+
+    /* ค้นหาข้อมูลสัมภาษณ์ที่ตรงกับ application นี้ */
+    const iv = interviews.find((i) => i.application_id === a.application_id);
+    const ivResult = iv ? iv.result : null;
+    const ivScore = iv ? iv.score : null;
+
+    return `
+    <tr class="border-t border-gray-100 hover:bg-gray-50">
+      <td class="px-4 py-3">${name}<div class="text-xs text-gray-400 font-mono">${email}</div></td>
+      <td class="px-4 py-3 text-gray-500">${pname}</div></td>
+      <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[a.status]}">${STATUS_TH[a.status]}</span></td>
+      <td class="px-4 py-3">
+        ${iv
+          ? `<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${INTERVIEW_RESULT_BADGE[ivResult]}">${INTERVIEW_RESULT_TH[ivResult]}</span>` +
+            (ivScore !== null ? `<span class="text-xs text-gray-400 ml-1">(${ivScore} คะแนน)</span>` : "")
+          : a.status === "SUBMITTED" || a.status === "DOCUMENT_REVIEW"
+            ? `<span class="text-xs text-gray-400">—</span>`
+            : `<span class="text-xs text-gray-400">—</span>`
+        }
+      </td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">
+        ${a.status === "ADMITTED"
+          ? `<span class="text-xs text-gray-400">นำเข้าแล้ว (${a.studentCode})</span>`
+          : a.status === "INTERVIEW_PASSED"
+            ? `<button onclick="openImportStudent('${a.application_id}')" class="text-green-700 hover:bg-green-50 rounded-lg px-3 py-1.5 text-xs font-semibold border border-green-200">นำเข้าข้อมูลนักศึกษา</button>`
+            : a.status === "INTERVIEW_FAILED" || a.status === "REJECTED"
+              ? `<span class="text-xs text-red-400">ปฏิเสธ</span>`
+              : a.status === "WITHDRAWN"
+                ? `<span class="text-xs text-gray-400">ถอนแล้ว</span>`
+                : a.status === "INTERVIEW_SCHEDULED"
+                  ? `<span class="text-xs text-amber-400">รอผลสัมภาษณ์</span>`
+                  : `<span class="text-xs text-gray-400">—</span>`
+        }
+      </td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td></tr>`;
+}
+
+function init() { render(); notifyParentPage("list"); }
+</script>
+</body>
+</html>

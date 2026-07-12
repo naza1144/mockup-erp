@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · บันทึกการนิเทศ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 9. SupervisionVisit — UC-13 ═══ -->
+<div>
+  <a id="sv-back" href="page-track-t.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">บันทึกการนิเทศ — <span id="sv-student-name" class="text-amber-700"></span></h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-md space-y-3 mb-4">
+    <div><label class="text-sm font-semibold text-gray-700">วันที่</label><input id="sv-date" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div><label class="text-sm font-semibold text-gray-700">รูปแบบการนิเทศ</label>
+      <select id="sv-mode" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"><option value="ONSITE">Onsite</option><option value="ONLINE">Online</option><option value="PHONE">โทรศัพท์</option></select></div>
+    <div><label class="text-sm font-semibold text-gray-700">สรุปผล</label><textarea id="sv-summary" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <p id="sv-error" class="text-xs text-red-600 hidden">กรอกข้อมูลให้ครบ</p>
+    <button onclick="saveVisit()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+  <p class="text-sm font-semibold mb-2">ประวัติการนิเทศ</p>
+  <div id="sv-history" class="space-y-2"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_tc_students", seedStudents);
+const studentId = Number(new URLSearchParams(location.search).get("student"));
+const curVisitStudent = students.find((s) => s.id === studentId);
+
+/* ═══ UC-13 — บันทึกการนิเทศ ═══ */
+function saveVisit() {
+  const date = document.getElementById("sv-date").value; const mode = document.getElementById("sv-mode").value; const summary = document.getElementById("sv-summary").value.trim();
+  const err = document.getElementById("sv-error");
+  if (!date || !summary) { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  const seq = curVisitStudent.application.visits.length + 1;
+  curVisitStudent.application.visits.push({ seq, date, mode, summary });
+  saveData("m8_tc_students", students);
+  document.getElementById("sv-summary").value = ""; render();
+}
+
+function render() {
+  document.getElementById("sv-back").href = "page-track-t.html?student=" + studentId;
+  document.getElementById("sv-student-name").textContent = curVisitStudent?.name ?? "";
+  document.getElementById("sv-history").innerHTML = curVisitStudent.application.visits.map((v) => `<div class="bg-white rounded-xl border border-gray-200 p-3 text-sm">ครั้งที่ ${v.seq} · ${v.date} · ${v.mode} — ${v.summary}</div>`).join("") || `<p class="text-sm text-gray-400">ยังไม่มีการนิเทศ</p>`;
+}
+
+function init() {
+  if (!enforceRole(["supervisor"])) return;
+  render();
+  notifyParentPage("track-t");
+}
+</script>
+</body>
+</html>

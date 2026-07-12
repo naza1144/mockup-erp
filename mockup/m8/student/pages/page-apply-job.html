@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 นักศึกษา · สมัครงานสหกิจ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ApplyJob — UC-07/08 ═══ -->
+<div class="max-w-2xl">
+  <a href="page-dashboard.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">สมัครงานสหกิจ</h1>
+  <div id="apply-gate" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3"></div>
+  <div id="apply-form" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+    <div><label class="text-sm font-semibold text-gray-700">ค้นหาบริษัท</label>
+      <input id="aj-company-q" oninput="renderCompanySearch()" placeholder="พิมพ์ชื่อบริษัท..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+      <div id="aj-company-results" class="mt-1 space-y-1"></div>
+      <p class="text-xs text-gray-500 mt-1">บริษัทที่เลือก: <span id="aj-company-selected" class="font-semibold">ยังไม่ได้เลือก</span></p>
+      <button type="button" onclick="toggleNewCompanyForm()" class="text-xs text-amber-700 hover:underline mt-2">ไม่พบบริษัท? เพิ่มบริษัทใหม่</button>
+    </div>
+    <div id="new-company-form" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <p class="text-sm font-semibold text-amber-900">เพิ่มบริษัทใหม่</p>
+        <button type="button" onclick="toggleNewCompanyForm(false)" class="text-xs text-gray-500 hover:text-gray-700">ปิด</button>
+      </div>
+      <div><label class="text-sm font-semibold text-gray-700">ชื่อบริษัท</label><input id="nc-name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-sm font-semibold text-gray-700">ที่ตั้ง</label><input id="nc-location" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+        <div><label class="text-sm font-semibold text-gray-700">ประเภทธุรกิจ</label><input id="nc-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      </div>
+      <div><label class="text-sm font-semibold text-gray-700">ผู้ประสานงานบริษัท</label><input id="nc-contact" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <p id="nc-error" class="text-xs text-red-600 hidden"></p>
+      <button type="button" onclick="addNewCompany()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">เพิ่มและเลือกบริษัทนี้</button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-sm font-semibold text-gray-700">ตำแหน่ง</label><input id="aj-position" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">ผู้ดูแล</label><input id="aj-caregiver" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+    <div><label class="text-sm font-semibold text-gray-700">ที่พักระหว่างฝึก</label><input id="aj-accommodation" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-sm font-semibold text-gray-700">ผู้ติดต่อฉุกเฉิน</label><input id="aj-emergency-name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">เบอร์ฉุกเฉิน</label><input id="aj-emergency-phone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-sm font-semibold text-gray-700">วันเริ่มฝึก</label><input id="aj-start" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold text-gray-700">วันสิ้นสุด</label><input id="aj-end" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+    <p id="aj-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="submitApplication()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ส่งใบสมัคร</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let application = loadData("m8_st_application", null);
+let selectedCompany = null;
+
+/* ═══ UC-07/08 — สมัครงานสหกิจ (gate: 30 ชม. + คุณสมบัติวิชาการ) ═══ */
+function renderCompanySearch() {
+  const q = document.getElementById("aj-company-q").value.toLowerCase();
+  const list = q ? mockCompanies.filter((c) => c.name.toLowerCase().includes(q)) : [];
+  document.getElementById("aj-company-results").innerHTML = list.map((c) => `
+    <button onclick="selectCompany(${c.id})" class="block w-full text-left text-xs border border-gray-200 rounded-lg px-2 py-1.5 hover:bg-gray-50">${c.name} — ${c.location}</button>`).join("");
+}
+function selectCompany(id) {
+  selectedCompany = mockCompanies.find((c) => c.id === id);
+  document.getElementById("aj-company-selected").textContent = selectedCompany.name;
+  document.getElementById("aj-company-q").value = ""; document.getElementById("aj-company-results").innerHTML = "";
+}
+function toggleNewCompanyForm(forceOpen) {
+  const form = document.getElementById("new-company-form");
+  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : form.classList.contains("hidden");
+  form.classList.toggle("hidden", !shouldOpen);
+}
+function addNewCompany() {
+  const name = document.getElementById("nc-name").value.trim();
+  const location = document.getElementById("nc-location").value.trim();
+  const type = document.getElementById("nc-type").value.trim();
+  const contact = document.getElementById("nc-contact").value.trim();
+  const err = document.getElementById("nc-error");
+  if (!name || !location || !type || !contact) {
+    err.textContent = "กรอกชื่อบริษัท ที่ตั้ง ประเภทธุรกิจ และผู้ประสานงานให้ครบ";
+    err.classList.remove("hidden");
+    return;
+  }
+  const normalizedName = name.toLocaleLowerCase("th-TH").replace(/\s+/g, " ");
+  const duplicate = mockCompanies.find((c) => c.name.toLocaleLowerCase("th-TH").replace(/\s+/g, " ") === normalizedName);
+  if (duplicate) {
+    selectCompany(duplicate.id);
+    err.textContent = `พบข้อมูลบริษัทนี้แล้ว ระบบเลือก "${duplicate.name}" ให้แทน`;
+    err.classList.remove("hidden");
+    return;
+  }
+  const company = { id: Math.max(0, ...mockCompanies.map((c) => c.id)) + 1, name, location, type, contact, addedBy: "STUDENT" };
+  mockCompanies.push(company);
+  saveData("m8_st_companies", mockCompanies);
+  selectCompany(company.id);
+  err.classList.add("hidden");
+  ["nc-name", "nc-location", "nc-type", "nc-contact"].forEach((id) => document.getElementById(id).value = "");
+  toggleNewCompanyForm(false);
+}
+function submitApplication() {
+  const err = document.getElementById("aj-error");
+  if (!selectedCompany) { err.textContent = "กรุณาเลือกบริษัทก่อน"; err.classList.remove("hidden"); return; }
+  const position = document.getElementById("aj-position").value.trim();
+  const caregiver = document.getElementById("aj-caregiver").value.trim();
+  const accommodation = document.getElementById("aj-accommodation").value.trim();
+  const emergencyName = document.getElementById("aj-emergency-name").value.trim();
+  const emergencyPhone = document.getElementById("aj-emergency-phone").value.trim();
+  const start = document.getElementById("aj-start").value; const end = document.getElementById("aj-end").value;
+  if (!position || !caregiver || !accommodation || !emergencyName || !emergencyPhone || !start || !end) { err.textContent = "กรอกข้อมูลให้ครบ: บริษัท ตำแหน่ง ผู้ดูแล ที่พัก ผู้ติดต่อฉุกเฉิน และช่วงเวลาฝึก"; err.classList.remove("hidden"); return; }
+  if (end <= start) { err.textContent = "วันสิ้นสุดต้องมากกว่าวันเริ่มฝึก"; err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  /* ระบบจริง: POST /students/me/job-application */
+  application = {
+    companyId: selectedCompany.id, companyName: selectedCompany.name, position,
+    caregiver, accommodation, emergencyName, emergencyPhone, startDate: start, endDate: end,
+    status: "APPLIED", history: [{ status: "APPLIED", date: new Date().toISOString().slice(0, 10), by: "นักศึกษา" }],
+  };
+  saveData("m8_st_application", application); selectedCompany = null;
+  alert("ส่งใบสมัครสำเร็จ รอการอนุมัติจากอาจารย์"); window.location.href = "page-track.html";
+}
+
+function init() {
+  notifyParentPage("apply-job");
+}
+</script>
+</body>
+</html>

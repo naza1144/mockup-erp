@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 Planning · นำเข้ากลุ่มเรียนจากไฟล์ (Bulk Import)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+    .overflow-x-auto::-webkit-scrollbar { height: 8px; }
+    .overflow-x-auto::-webkit-scrollbar-track { background: #f1f1f1; }
+    .overflow-x-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .overflow-x-auto::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<a href="page-section-create.html" class="text-sm text-gray-500 hover:text-gray-700 mb-4 flex items-center gap-1">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+  กลับไปสร้างทีละรายการ
+</a>
+<h1 class="text-2xl font-bold mb-4 text-gray-800">นำเข้ากลุ่มเรียนจากไฟล์ (Bulk Import)</h1>
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-3xl space-y-4">
+  <div>
+    <label class="block text-sm font-semibold text-gray-700 mb-2">วางข้อมูล CSV</label>
+    <p class="text-xs text-gray-500 mb-2 bg-blue-50 border border-blue-100 rounded-lg p-2">
+      <strong>รูปแบบ:</strong> <code class="bg-white px-1 rounded">รหัสวิชา,รหัสอาจารย์1;รหัสอาจารย์2,รหัสห้อง,รหัส timeslot</code><br>
+      <span class="text-gray-600">* ใช้ <code>;</code> คั่นรหัสนอาจารย์กรณีมีหลายคน (หนึ่งบรรทัดต่อหนึ่ง Section)</span>
+    </p>
+    <textarea id="imp-csv" rows="8" placeholder="CS101,101,R101,SLOT1&#10;CS201,102;103,R101,TUES1"
+      class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm font-mono bg-gray-50 focus:bg-white focus:border-teal-500 outline-none transition-colors"></textarea>
+  </div>
+  <button onclick="runSectionImport()" class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl px-6 py-2.5 shadow-sm transition-transform active:scale-95">ตรวจสอบ &amp; นำเข้าข้อมูล</button>
+
+  <div id="imp-result" class="hidden mt-4 bg-gray-50 rounded-xl p-4 text-sm border border-gray-200">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-green-700 font-bold">สำเร็จ:</span> <span id="imp-ok" class="font-bold text-gray-800"></span> รายการ
+      <span class="mx-2 text-gray-300">|</span>
+      <span class="text-red-600 font-bold">ผิดพลาด/ข้าม:</span> <span id="imp-fail" class="font-bold text-gray-800"></span> รายการ
+    </div>
+    <ul id="imp-fail-list" class="text-xs text-red-600 list-disc pl-5 space-y-1 mt-2 bg-red-50 p-3 rounded-lg"></ul>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let rooms = loadData("m1p_rooms", seedRooms);
+let timeslots = loadData("m1p_timeslots", seedTimeslots);
+let sections = loadData("m1p_sections", seedSections);
+
+/* ═══ UC-B6 — bulk import (รองรับอาจารย์หลายคน) ═══ */
+function runSectionImport() {
+  const lines = document.getElementById("imp-csv").value.split("\n").map((l) => l.trim()).filter(Boolean);
+  let ok = 0; const fails = [];
+  lines.forEach((line) => {
+    const parts = line.split(",");
+    if (parts.length < 4) { fails.push(`"${line}" — รูปแบบไม่ถูกต้อง (ต้องมี 4 ส่วน)`); return; }
+    const courseCode = parts[0].trim();
+    const instrStr = parts[1].trim(); // อาจเป็น "101" หรือ "101;102;103"
+    const roomCode = parts[2].trim();
+    const slotCode = parts[3].trim();
+
+    const instructorIds = instrStr.split(";").map(s => Number(s.trim())).filter(n => !isNaN(n));
+    const room = rooms.find((r) => r.code === roomCode);
+    const slot = timeslots.find((t) => t.code === slotCode);
+
+    if (!courseCode || instructorIds.length === 0 || !room || !slot) {
+      fails.push(`"${line}" — ข้อมูลไม่ครบ/ไม่พบห้องหรือ timeslot`);
+      return;
+    }
+    const conflicts = findConflicts(room.id, instructorIds, slot.id, null);
+    if (conflicts.length) { fails.push(`"${line}" — ${conflicts[0]}`); return; }
+
+    sections.push({
+      id: Date.now() + ok,
+      courseCode,
+      instructorIds,
+      roomId: room.id,
+      timeslotId: slot.id,
+      mode: "ONSITE",
+      quotaTotal: 40,
+      status: "DRAFT",
+      cross: false,
+      sec: sections.filter(s => s.courseCode === courseCode).length + 1
+    });
+    ok++;
+  });
+  saveData("m1p_sections", sections);
+  document.getElementById("imp-ok").textContent = ok;
+  document.getElementById("imp-fail").textContent = fails.length;
+  document.getElementById("imp-fail-list").innerHTML = fails.map((f) => `<li>${f}</li>`).join("");
+  document.getElementById("imp-result").classList.remove("hidden");
+}
+
+function init() { notifyParentPage("section-import"); }
+</script>
+</body>
+</html>

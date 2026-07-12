@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 นักศึกษา · ค้นหาคลังวิทยานิพนธ์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ SearchRepository — UC-21 ═══ -->
+<div class="max-w-4xl">
+  <h1 class="text-2xl font-bold mb-4">ค้นหาคลังวิทยานิพนธ์</h1>
+  <input id="rp-q" oninput="renderRepo()" placeholder="ค้นหาชื่อเรื่อง/keywords/ปีที่จบ..."
+    class="w-full max-w-sm border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-pink-300">
+  <div id="rp-results" class="space-y-2"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+const repo = loadData("m9_st_repo", seedRepo);
+
+function renderRepo() {
+  const q = (document.getElementById("rp-q")?.value ?? "").toLowerCase();
+  const list = repo.filter((r) => !q || r.title.toLowerCase().includes(q) || r.keywords.toLowerCase().includes(q) || String(r.year).includes(q));
+  document.getElementById("rp-results").innerHTML = list.map((r) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <p class="text-sm font-semibold">${r.title}</p>
+      <p class="text-xs text-gray-500 mt-1">ปีที่จบ ${r.year} · ${r.keywords}</p>
+    </div>`).join("") || `<p class="text-sm text-gray-400 text-center py-8">ไม่พบข้อมูล</p>`;
+}
+
+function init() { renderRepo(); notifyParentPage("repository"); }
+</script>
+</body>
+</html>

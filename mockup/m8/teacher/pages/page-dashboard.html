@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · Dashboard ความก้าวหน้านักศึกษา</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 1. TeacherDashboard — UC-16 ═══ -->
+<div>
+  <h1 id="dash-title" class="text-2xl font-bold mb-4">Dashboard ความก้าวหน้านักศึกษา</h1>
+  <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+    <div class="bg-gray-100/60 rounded-xl px-4 py-3"><p class="text-xs text-gray-500">อบรมรอตรวจ</p><p id="kpi-training" class="text-xl font-semibold"></p></div>
+    <div class="bg-gray-100/60 rounded-xl px-4 py-3"><p class="text-xs text-gray-500">ใบสมัครรอพิจารณา</p><p id="kpi-job" class="text-xl font-semibold"></p></div>
+    <div class="bg-gray-100/60 rounded-xl px-4 py-3"><p class="text-xs text-gray-500">กำลังฝึกงาน</p><p id="kpi-interning" class="text-xl font-semibold"></p></div>
+    <div class="bg-gray-100/60 rounded-xl px-4 py-3"><p class="text-xs text-gray-500">รายงานรอตรวจ</p><p id="kpi-report" class="text-xl font-semibold"></p></div>
+    <div class="bg-amber-50 rounded-xl px-4 py-3"><p class="text-xs text-amber-700">รอตรวจนิเทศ</p><p id="kpi-supervision" class="text-xl font-semibold text-amber-800"></p></div>
+    <div class="bg-purple-50 rounded-xl px-4 py-3"><p class="text-xs text-purple-700">รอประเมินเกรด</p><p id="kpi-pending-grade" class="text-xl font-semibold text-purple-800"></p></div>
+  </div>
+  <input id="dash-q" oninput="renderDashboardStudents()" placeholder="ค้นหานักศึกษา (ชื่อ/รหัส)..." class="w-full max-w-sm border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3">
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm"><thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500"><tr><th class="text-left px-4 py-3">รหัส</th><th class="text-left px-4 py-3">ชื่อ</th><th class="text-left px-4 py-3">สถานะ Placement</th><th class="text-left px-4 py-3">สถานะการตรวจนิเทศ</th></tr></thead><tbody id="dash-rows"></tbody></table>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_tc_students", seedStudents);
+
+function supervisionStatus(student) {
+  const app = student.application;
+  if (!app || ["APPLIED", "REJECTED", "CANCELLED"].includes(app.status)) {
+    return { key: "not-ready", label: "ยังไม่เข้าสู่ช่วงนิเทศ", color: "bg-gray-100 text-gray-600" };
+  }
+  if ((app.visits || []).length > 0) {
+    return { key: "done", label: `นิเทศเสร็จแล้ว ${app.visits.length} ครั้ง`, color: "bg-green-100 text-green-700" };
+  }
+  if (!app.supervisorId) {
+    return { key: "unassigned", label: "ยังไม่มอบหมายอาจารย์", color: "bg-red-50 text-red-700" };
+  }
+  return { key: "pending", label: "รอตรวจนิเทศ", color: "bg-amber-100 text-amber-800" };
+}
+
+function renderDashboardStudents() {
+  const q = (document.getElementById("dash-q")?.value ?? "").toLowerCase();
+  const list = students.filter((s) => !q || s.name.toLowerCase().includes(q) || s.code.includes(q));
+  document.getElementById("dash-rows").innerHTML = list.map((s) => {
+    const overall = s.application ? STATUS_TH[s.application.status] : `อบรม ${studentApprovedHours(s)}/30 ชม.`;
+    const supervision = supervisionStatus(s);
+    return `<tr class="border-t border-gray-100"><td class="px-4 py-3 font-mono">${s.code}</td><td class="px-4 py-3">${s.name}</td><td class="px-4 py-3 text-gray-500">${overall}</td><td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${supervision.color}">${supervision.label}</span></td></tr>`;
+  }).join("") || `<tr><td colspan="4" class="px-4 py-8 text-center text-sm text-gray-400">ไม่พบข้อมูลนักศึกษา</td></tr>`;
+}
+
+function render() {
+  document.getElementById("dash-title").textContent = `Dashboard ความก้าวหน้านักศึกษา (${TEACHER_ACTOR_LABEL})`;
+  /* Dashboard KPIs */
+  const pendingTrainings = students.flatMap((s) => s.trainings.filter((t) => t.status === "PENDING").map((t) => ({ s, t })));
+  const pendingJobs = students.filter((s) => s.application?.status === "APPLIED");
+  const interning = students.filter((s) => s.application?.status === "INTERNING");
+  const pendingReports = students.flatMap((s) => (s.application?.weeklyReports || []).filter((r) => r.status === "SUBMITTED").map((r) => ({ s, r })));
+  const pendingSupervision = students.filter((s) => supervisionStatus(s).key === "pending");
+  const pendingGrade = students.filter((s) => s.application?.status === "PENDING_GRADE");
+  document.getElementById("kpi-training").textContent = pendingTrainings.length;
+  document.getElementById("kpi-job").textContent = pendingJobs.length;
+  document.getElementById("kpi-interning").textContent = interning.length;
+  document.getElementById("kpi-report").textContent = pendingReports.length;
+  document.getElementById("kpi-supervision").textContent = pendingSupervision.length;
+  document.getElementById("kpi-pending-grade").textContent = pendingGrade.length;
+  renderDashboardStudents();
+}
+
+function init() { render(); notifyParentPage("dashboard"); }
+</script>
+</body>
+</html>

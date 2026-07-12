@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M0 Admin Console · กำหนด/เพิกถอน Role</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ASSIGN_ROLE — UC-09 ═══ -->
+<div class="max-w-4xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการบัญชีผู้ใช้</a>
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">กำหนด/เพิกถอน Role</h1>
+    <a id="catalog-link" href="page-catalog.html" class="text-sm text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5">จัดการ Role Catalog</a>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg">
+    <p class="text-sm mb-3">บัญชี: <span id="ar-name" class="font-semibold"></span></p>
+    <div id="ar-roles" class="space-y-2"></div>
+    <p id="ar-progress" class="text-xs text-gray-500 mt-3 hidden"></p>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let accounts = loadData("m0_admin_accounts", seedAccounts);
+let roles = loadData("m0_admin_roles", seedRoles);
+const id = new URLSearchParams(location.search).get("id");
+const target = accounts.find((a) => a.account_id === id);
+
+function roleName(code) { const r = roles.find((x) => x.code === code); return r ? r.name : code; }
+
+/* ═══ UC-09 — assign/revoke role · จำลอง sync กลับ Keycloak + audit ═══ */
+function toggleRole(code) {
+  const has = target.roles.some((r) => r.code === code);
+  if (has) {
+    target.roles = target.roles.filter((r) => r.code !== code);
+  } else {
+    target.roles.push({ code, granted_by: ADMIN_ID, granted_at: new Date().toISOString() });
+  }
+  target.updated_at = new Date().toISOString();
+  saveData("m0_admin_accounts", accounts);
+
+  /* BR-M0-005: audit log */
+  addAudit(
+    ADMIN_ID,
+    has ? "role.revoked" : "role.assigned",
+    target.account_id,
+    has ? { role: code } : null,
+    has ? null : { role: code }
+  );
+
+  const progress = document.getElementById("ar-progress");
+  progress.classList.remove("hidden");
+  progress.textContent = `กำลัง sync role กลับ Keycloak (${has ? "revoke" : "assign"} ${roleName(code)})...`;
+  /* ระบบจริง: POST/DELETE /accounts/{id}/roles → sync role mapper ที่ Keycloak แล้ว emit account.role_changed */
+  setTimeout(() => { progress.textContent = "sync สำเร็จ — emit event account.role_changed (จำลอง)"; render();
+    setTimeout(() => progress.classList.add("hidden"), 1200); }, 600);
+}
+
+function render() {
+  document.getElementById("ar-name").textContent = fullNameTH(target);
+  document.getElementById("ar-roles").innerHTML = roles.map((r) => {
+    const assigned = target.roles.find((gr) => gr.code === r.code);
+    const checked = !!assigned;
+    return `<label class="flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 cursor-pointer">
+      <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleRole('${r.code}')">
+      <span class="font-semibold">${r.name}</span>
+      <span class="text-gray-400 font-mono text-xs">${r.code}</span>
+      ${checked ? `<span class="text-[10px] text-gray-400 ml-auto">โดย admin · ${new Date(assigned.granted_at).toLocaleDateString("th-TH")}</span>` : ""}
+    </label>`;
+  }).join("");
+}
+
+function init() {
+  document.getElementById("catalog-link").href = "page-catalog.html?id=" + encodeURIComponent(id);
+  render();
+  notifyParentPage("assign");
+}
+</script>
+</body>
+</html>

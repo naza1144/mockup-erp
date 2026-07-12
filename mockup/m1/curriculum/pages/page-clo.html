@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · จัดการ CLO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 9. CLO Management — UC-A11 ═══ -->
+<div>
+  <a href="page-courses.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับจัดการรายวิชา</a>
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">จัดการ CLO — <span id="clo-course-title" class="text-violet-700"></span></h1>
+    <a id="matrix-link" href="page-matrix.html" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">จับคู่ PLO-CLO</a>
+  </div>
+  <div id="clo-list" class="space-y-2 mb-4"></div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex gap-2 max-w-3xl">
+    <input id="clo-desc" placeholder="คำอธิบาย CLO" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1">
+    <select id="clo-bloom" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+      <option value="">— Bloom's —</option><option value="REMEMBER">จำ</option><option value="UNDERSTAND">เข้าใจ</option>
+      <option value="APPLY">ประยุกต์</option><option value="ANALYZE">วิเคราะห์</option><option value="EVALUATE">ประเมิน</option><option value="CREATE">สร้างสรรค์</option>
+    </select>
+    <button onclick="addClo()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm rounded-lg px-3">เพิ่ม CLO</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let courses = loadData("m1c_courses", seedCourses);
+const cid = Number(new URLSearchParams(location.search).get("cid")) || courses[0].course_id;
+let curCourse = courses.find((c) => c.course_id === cid) || courses[0];
+
+function addClo() {
+  const desc = document.getElementById("clo-desc").value.trim();
+  if (!desc) return;
+  const code = "CLO" + ((curCourse.clos || []).length + 1);
+  curCourse.clos.push({ clo_id: Date.now(), code, description: desc, bloom_level: document.getElementById("clo-bloom").value });
+  saveData("m1c_courses", courses);
+  document.getElementById("clo-desc").value = ""; render();
+}
+function deleteClo(cloId) { curCourse.clos = curCourse.clos.filter((c) => c.clo_id !== cloId); saveData("m1c_courses", courses); render(); }
+
+function render() {
+  document.getElementById("clo-course-title").textContent = curCourse.code + " — " + curCourse.name_th;
+  document.getElementById("clo-list").innerHTML = (curCourse.clos || []).map((c) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+      <div><p class="text-sm font-semibold">${c.code}</p><p class="text-xs text-gray-500">${c.description}${c.bloom_level ? " · Bloom: " + (BLOOM_TH[c.bloom_level] || c.bloom_level) : ""}</p></div>
+      <button onclick="deleteClo(${c.clo_id})" class="text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 text-xs">ลบ</button></div>`).join("") || '<p class="text-sm text-gray-400">ยังไม่มี CLO</p>';
+}
+
+function init() { render(); notifyParentPage("clo"); }
+</script>
+</body>
+</html>

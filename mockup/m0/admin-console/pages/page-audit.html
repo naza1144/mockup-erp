@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M0 Admin Console · Audit Log</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ AUDIT_LOG — BR-M0-005 ═══ -->
+<div class="max-w-4xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการบัญชีผู้ใช้</a>
+  <h1 class="text-2xl font-bold mb-4">Audit Log (account_audit)</h1>
+  <p class="text-xs text-gray-500 mb-3">Append-only log — ห้าม UPDATE/DELETE (BR-M0-005)</p>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+        <tr>
+          <th class="text-left px-4 py-3">เวลา</th>
+          <th class="text-left px-4 py-3">ผู้กระทำ (who)</th>
+          <th class="text-left px-4 py-3">การกระทำ (action)</th>
+          <th class="text-left px-4 py-3">บัญชีเป้าหมาย</th>
+          <th class="text-left px-4 py-3">ค่าเดิม → ค่าใหม่</th>
+        </tr>
+      </thead>
+      <tbody id="audit-rows"></tbody>
+    </table>
+  </div>
+  <p class="text-xs text-gray-400 mt-2">※ จำลอง audit log — ระบบจริงบันทึกใน <span class="font-mono">identity.account_audit</span> (append-only)</p>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let accounts = loadData("m0_admin_accounts", seedAccounts);
+let auditLog = loadData("m0_admin_audit", []); /* จำลอง identity.account_audit (append-only) */
+
+function render() {
+  /* Audit log render */
+  document.getElementById("audit-rows").innerHTML = auditLog.length === 0
+    ? `<tr><td colspan="5" class="px-4 py-10 text-center text-sm text-gray-400">ยังไม่มี audit log</td></tr>`
+    : auditLog.slice().reverse().map((e) => {
+        const whoName = fullNameTH(accounts.find((a) => a.account_id === e.who)) || e.who;
+        const targetName = fullNameTH(accounts.find((a) => a.account_id === e.target_account_id)) || e.target_account_id;
+        const oldStr = e.old_value ? JSON.stringify(e.old_value) : "-";
+        const newStr = e.new_value ? JSON.stringify(e.new_value) : "-";
+        return `<tr class="border-t border-gray-100 hover:bg-gray-50">
+          <td class="px-4 py-3 text-xs text-gray-500">${new Date(e.created_at).toLocaleString("th-TH")}</td>
+          <td class="px-4 py-3 text-sm">${whoName}</td>
+          <td class="px-4 py-3"><span class="font-mono text-xs bg-gray-100 rounded px-1.5 py-0.5">${e.action}</span></td>
+          <td class="px-4 py-3 text-sm">${targetName}</td>
+          <td class="px-4 py-3 text-xs text-gray-500 font-mono">${oldStr} → ${newStr}</td>
+        </tr>`;
+      }).join("");
+}
+
+function init() {
+  render();
+  notifyParentPage("audit");
+}
+</script>
+</body>
+</html>

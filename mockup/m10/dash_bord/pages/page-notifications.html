@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M10 · Notifications</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Noto Sans Thai', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6">
+  <h1 class="text-2xl font-bold mb-1">Notification Service (E4)</h1>
+  <p class="text-xs text-blue-600 mb-4">UC-09 (Email) · UC-10 (In-app) · UC-11 (User Preference) · UC-12 (Event-driven) — ส่งแจ้งเตือนอัตโนมัติเมื่อมี event เกิดขึ้น พร้อม retry + log</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h2 class="text-sm font-semibold mb-3">User Preference</h2>
+      <p class="text-xs text-gray-500 mb-2">เปิด/ปิดช่องทางการแจ้งเตือนต่อประเภท</p>
+      <div id="pref-list" class="text-xs space-y-2"></div>
+      <button onclick="savePrefs()" class="mt-2 bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl px-4 py-2">💾 บันทึก</button>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <h2 class="text-sm font-semibold mb-3">Delivery Log</h2>
+      <p class="text-xs text-gray-500 mb-2">ประวัติการส่ง notification ล่าสุด</p>
+      <div id="delivery-list" class="text-xs space-y-1"></div>
+    </div>
+  </div>
+
+  <script src="../shared.js"></script>
+  <script>
+    function init() {
+      notifyParentPage("notifications");
+
+      const prefs = loadData("notif_prefs", SEED_NOTIF_PREFS);
+      document.getElementById("pref-list").innerHTML = prefs.map((p, i) =>
+        `<div class="flex items-center justify-between border-b border-gray-100 pb-1">
+          <span class="flex-1">${p.desc}</span>
+          <label class="text-xs mr-2">📧 <input type="checkbox" data-idx="${i}" data-ch="email" ${p.email ? 'checked' : ''}></label>
+          <label class="text-xs">💬 <input type="checkbox" data-idx="${i}" data-ch="in_app" ${p.in_app ? 'checked' : ''}></label>
+        </div>`
+      ).join("");
+
+      const deliveries = loadData("deliveries", SEED_DELIVERIES);
+      document.getElementById("delivery-list").innerHTML = deliveries.map(d =>
+        `<div class="flex justify-between border-b border-gray-100 pb-1">
+          <span class="text-gray-400 text-[10px]">${d.created_at}</span>
+          <span class="font-mono">${d.event}</span>
+          <span>${d.title}</span>
+          <span>${d.channel}</span>
+          <span class="${d.status === 'sent' ? 'text-green-600' : d.status === 'dead' ? 'text-red-600' : 'text-amber-600'}">${d.status}</span>
+        </div>`
+      ).join("");
+    }
+
+    function savePrefs() {
+      const prefs = loadData("notif_prefs", SEED_NOTIF_PREFS);
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        const idx = parseInt(cb.dataset.idx);
+        const ch = cb.dataset.ch;
+        if (prefs[idx]) prefs[idx][ch] = cb.checked;
+      });
+      saveData("notif_prefs", prefs);
+      alert('✅ บันทึก Preference แล้ว');
+    }
+    init();
+  </script>
+</body>
+</html>

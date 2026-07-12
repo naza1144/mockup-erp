@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 งานทะเบียน · นำเข้าใบสมัครแบบชุด</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ BulkImportApp — UC-02 ═══ -->
+<div>
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการใบสมัคร</a>
+  <h1 class="text-2xl font-bold mb-4">นำเข้าใบสมัครแบบชุด (Bulk Import)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-2xl space-y-3">
+    <label class="text-sm font-semibold text-gray-700">วางข้อมูล CSV (account_id, program_id, academic_year) บรรทัดละ 1 รายการ</label>
+    <textarea id="bulk-csv" rows="6" placeholder="acc-201,prog-cs,2566&#10;acc-202,prog-it,2566"
+      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-300"></textarea>
+    <p class="text-xs text-gray-500">ระบบจริง: เรียก M0 API เพื่อยืนยัน account_id → identity.account และ M1 API เพื่อยืนยัน program_id → curriculum.program</p>
+    <button onclick="runBulkImport()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ประมวลผลนำเข้า</button>
+    <div id="bulk-result" class="hidden mt-3 bg-gray-50 rounded-xl p-4 text-sm space-y-2">
+      <p>นำเข้าสำเร็จ <span id="bulk-ok" class="font-semibold text-green-700"></span> รายการ ·
+         ผิดพลาด/ข้าม <span id="bulk-fail" class="font-semibold text-red-600"></span> รายการ</p>
+      <ul id="bulk-fail-list" class="text-xs text-red-600 list-disc pl-4"></ul>
+      <button onclick="location.href='page-list.html'" class="text-sm text-green-700 hover:bg-green-50 rounded-lg px-3 py-1.5 border border-green-200">นำเข้าสำเร็จ — กลับรายการ</button>
+    </div>
+    <div class="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-700">
+      <p class="font-semibold mb-1">📋 Audit (จำลอง):</p>
+      <p>เมื่อ bulk import สำเร็จ แต่ละ application จะมี audit log<br>
+      → <code>audit_log (M10): INSERT action='BULK_IMPORT' entity_type='application'</code></p>
+    </div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let applications = loadData("m4_rb_applications", seedApplications);
+
+/* ═══ UC-02 — Bulk Import Applications ═══ */
+function runBulkImport() {
+  const lines = document.getElementById("bulk-csv").value.split("\n").map((l) => l.trim()).filter(Boolean);
+  let ok = 0; const fails = [];
+  lines.forEach((line) => {
+    const [account_id, program_id, academicYear] = line.split(",").map((s) => (s || "").trim());
+    if (!account_id || !program_id || !academicYear) {
+      fails.push(`"${line}" — ข้อมูลไม่ครบ (ต้องมี account_id, program_id, academic_year)`);
+      return;
+    }
+    /* ระบบจริง: POST /api/v1/accounts/{id} → M0 verify */
+    if (!mockAccounts[account_id]) {
+      fails.push(`"${line}" — ไม่พบ account_id '${account_id}' (M0: identity.account)`);
+      return;
+    }
+    /* ระบบจริง: POST /api/v1/curriculum/programs/{id} → M1 verify */
+    if (!mockPrograms[program_id]) {
+      fails.push(`"${line}" — ไม่พบ program_id '${program_id}' (M1: curriculum.program)`);
+      return;
+    }
+    if (applications.some((a) => a.account_id === account_id && a.program_id === program_id)) {
+      fails.push(`"${line}" — ผู้สมัครนี้สมัครหลักสูตรนี้แล้ว`);
+      return;
+    }
+
+    const appId = "bulk-" + crypto.randomUUID ? crypto.randomUUID() : (Date.now() + ok).toString(36);
+    applications.push({
+      application_id: appId,
+      account_id: account_id,
+      program_id: program_id,
+      academic_year: parseInt(academicYear),
+      status: "SUBMITTED",
+      submitted_at: new Date().toISOString(),
+      notes: "นำเข้าแบบชุด (Bulk Import)",
+      imported: false
+    });
+    ok++;
+  });
+  saveData("m4_rb_applications", applications);
+  document.getElementById("bulk-ok").textContent = ok;
+  document.getElementById("bulk-fail").textContent = fails.length;
+  document.getElementById("bulk-fail-list").innerHTML = fails.map((f) => `<li>${f}</li>`).join("");
+  document.getElementById("bulk-result").classList.remove("hidden");
+}
+
+function init() { notifyParentPage("list"); }
+</script>
+</body>
+</html>

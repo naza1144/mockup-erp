@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 นักศึกษา · ส่งรายงานรายสัปดาห์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ WeeklyReport — UC-14 ═══ -->
+<div class="max-w-2xl">
+  <a href="page-track.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">ส่งรายงานรายสัปดาห์ (สัปดาห์ที่ <span id="wr-week"></span>)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-md space-y-3 mb-5">
+    <div><label class="text-sm font-semibold text-gray-700">สรุปงานที่ได้ทำในสัปดาห์นี้</label><textarea id="wr-summary" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">ปัญหาที่พบและวิธีการแก้ไข</label><textarea id="wr-problems" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">สิ่งที่เรียนรู้จากการฝึก</label><textarea id="wr-knowledge" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">ข้อเสนอแนะจากพี่เลี้ยง</label><textarea id="wr-feedback" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <p id="wr-error" class="text-xs text-red-600 hidden">กรุณากรอกให้ครบทั้ง 4 หัวข้อก่อนส่งรายงาน (Alternative Flow UC-14)</p>
+    <button onclick="submitWeeklyReport()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ส่งรายงาน</button>
+  </div>
+  <p class="text-sm font-semibold mb-2">รายงานที่ส่งแล้ว</p>
+  <div id="weekly-list" class="space-y-2"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let weeklyReports = loadData("m8_st_weekly", []);
+
+/* ═══ UC-14 — ส่งรายงานรายสัปดาห์ ═══ */
+function submitWeeklyReport() {
+  const summary = document.getElementById("wr-summary").value.trim();
+  const problems = document.getElementById("wr-problems").value.trim();
+  const knowledge = document.getElementById("wr-knowledge").value.trim();
+  const feedback = document.getElementById("wr-feedback").value.trim();
+  const err = document.getElementById("wr-error");
+  if (!summary || !problems || !knowledge || !feedback) { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  const week = weeklyReports.length + 1;
+  weeklyReports.push({ week, summary, problems, knowledge, feedback, status: "SUBMITTED" });
+  saveData("m8_st_weekly", weeklyReports);
+  ["wr-summary", "wr-problems", "wr-knowledge", "wr-feedback"].forEach((id) => document.getElementById(id).value = "");
+  alert("ส่งรายงานสำเร็จ"); window.location.href = "page-track.html";
+}
+
+function render() {
+  document.getElementById("wr-week").textContent = weeklyReports.length + 1;
+  document.getElementById("weekly-list").innerHTML = weeklyReports.map((w) => `<div class="bg-white rounded-xl border border-gray-200 p-3 text-sm">สัปดาห์ที่ ${w.week} — <span class="text-xs text-gray-400">${w.status === "SUBMITTED" ? "ส่งแล้ว รอตรวจ" : "รับทราบแล้ว"}</span></div>`).join("") || `<p class="text-sm text-gray-400">ยังไม่มีรายงาน</p>`;
+}
+
+function init() {
+  render();
+  notifyParentPage("weekly");
+}
+</script>
+</body>
+</html>

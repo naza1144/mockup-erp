@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 งานทะเบียน · นำเข้าข้อมูลนักศึกษาใหม่</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ImportStudent — UC-06 ═══ -->
+<div>
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการใบสมัคร</a>
+  <h1 class="text-2xl font-bold mb-4">นำเข้าข้อมูลนักศึกษาใหม่</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-sm">ผู้สมัคร: <span id="is-name" class="font-semibold"></span> (สถานะ: INTERVIEW_PASSED)</p>
+
+    <!-- รหัสนักศึกษา -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">รหัสนักศึกษา <span class="text-red-500">*</span></label>
+      <input id="is-code" placeholder="เช่น 6601001 (7 หลัก ปี 2 หลัก + หลักสูตร 2 หลัก + running 3 หลัก)"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 font-mono focus:outline-none focus:ring-2 focus:ring-green-300">
+      <p class="text-xs text-gray-500 mt-1">Format: <code>[enrolled_year_2digit][program_2digit][seq_3digit]</code> — BR-M4-002</p>
+    </div>
+
+    <!-- บัญชี M0 -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">บัญชี M0 ที่ผูก (account_id) <span class="text-red-500">*</span></label>
+      <select id="is-account" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="">— เลือกบัญชี —</option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">soft FK → <code>identity.account.account_id</code> — UNIQUE 1:1</p>
+      <p class="text-xs text-gray-500">ระบบจริง: <code>GET /api/v1/accounts/{id}</code> (M0 API) — ตรวจสอบ account.type='STUDENT'</p>
+    </div>
+
+    <!-- ปีที่เข้าเรียน + ภาคเรียน -->
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-sm font-semibold text-gray-700">ปีที่เข้าเรียน <span class="text-red-500">*</span></label>
+        <select id="is-enrolled-year" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="2566">2566</option>
+          <option value="2567">2567</option>
+          <option value="2568">2568</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700">ภาคเรียน <span class="text-red-500">*</span></label>
+        <select id="is-enrolled-semester" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- หลักสูตร/เวอร์ชัน -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">หลักสูตร/เวอร์ชัน (program_version_id) <span class="text-red-500">*</span></label>
+      <select id="is-program" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="">— เลือกหลักสูตร —</option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">soft FK → <code>curriculum.program_version.program_version_id</code> — DD-M4-002</p>
+      <p class="text-xs text-gray-500">ระบบจริง: <code>GET /api/v1/curriculum/program-versions/{id}</code> (M1 API)</p>
+    </div>
+
+    <!-- อาจารย์ที่ปรึกษา -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700">อาจารย์ที่ปรึกษา (advisor_id)</label>
+      <select id="is-advisor" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="">— ไม่มี (เลือกภายหลัง) —</option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">soft FK → <code>faculty.instructor.instructor_id</code> — BR-M4-006 (ต้อง check status != 'TERMINATED')</p>
+      <p class="text-xs text-gray-500">ระบบจริง: <code>GET /api/v1/faculty/instructors/{id}</code> (M3 API)</p>
+    </div>
+
+    <p id="is-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="saveImportStudent()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">นำเข้านักศึกษา → ADMITTED</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let applications = loadData("m4_rb_applications", seedApplications);
+const qs = new URLSearchParams(location.search);
+const appId = qs.get("appId");
+let target = applications.find((a) => a.application_id === appId);
+
+/* ═══ UC-06 — Import Student (ADMIT) ═══
+   ระบบจริง:
+   1. ตรวจสอบ account_id ผ่าน M0 API (identity.account)
+   2. ตรวจสอบ program_version_id ผ่าน M1 API (curriculum.program_version)
+   3. INSERT registry.student + INSERT student_status_history (BR-M4-005)
+   4. UPDATE application.status → 'ADMITTED'
+   5. publish NATS event: student.enrolled
+   6. audit_log (M10): INSERT action='STUDENT_CREATED' */
+function saveImportStudent() {
+  const code = document.getElementById("is-code").value.trim();
+  const acc = document.getElementById("is-account").value;
+  const pv = document.getElementById("is-program").value;
+  const enrolledYear = document.getElementById("is-enrolled-year").value;
+  const enrolledSemester = document.getElementById("is-enrolled-semester").value;
+  const advisor = document.getElementById("is-advisor").value;
+  const err = document.getElementById("is-error");
+
+  /* Validate required fields */
+  if (!code) {
+    err.textContent = "กรุณากรอกรหัสนักศึกษา (format: [ปี2หลัก][หลักสูตร2หลัก][ลำดับ3หลัก] เช่น 6601001)";
+    err.classList.remove("hidden"); return;
+  }
+  if (!/^\d{7}$/.test(code)) {
+    err.textContent = "รหัสนักศึกษาต้องเป็นตัวเลข 7 หลักตาม BR-M4-002";
+    err.classList.remove("hidden"); return;
+  }
+  if (!acc) {
+    err.textContent = "กรุณาเลือกบัญชี M0 (account_id) — soft FK → identity.account";
+    err.classList.remove("hidden"); return;
+  }
+  if (!pv) {
+    err.textContent = "กรุณาเลือกหลักสูตร/เวอร์ชัน (program_version_id) — soft FK → curriculum.program_version (DD-M4-002)";
+    err.classList.remove("hidden"); return;
+  }
+  err.classList.add("hidden");
+
+  /* ระบบจริง: ตรวจสอบ advisor.status != 'TERMINATED' (BR-M4-006) */
+  if (advisor) {
+    const instr = mockInstructors[advisor];
+    if (!instr || instr.status === "TERMINATED") {
+      err.textContent = "อาจารย์ที่ปรึกษา status = TERMINATED — ไม่สามารถ assign ได้ (BR-M4-006)";
+      err.classList.remove("hidden"); return;
+    }
+  }
+
+  /* เปลี่ยน application.status → ADMITTED */
+  target.status = "ADMITTED";
+  target.imported = true;
+  target.studentCode = code;
+  target.advisor_id = advisor || null;
+
+  /* ระบบจริง: INSERT registry.student + INSERT student_status_history (BR-M4-005) */
+  console.log("📋 Audit log (M10): INSERT action='STUDENT_CREATED' entity_type='registry.student'");
+  console.log("📋 Audit log (M10): INSERT action='STATUS_CHANGE' entity_type='registry.student_status_history'");
+  console.log("📢 NATS publish: student.enrolled { student_id, account_id, student_code:", code, "}");
+
+  saveData("m4_rb_applications", applications);
+  alert(
+    "✅ นำเข้านักศึกษาเรียบร้อย (จำลอง)\n\n" +
+    "• application.status → ADMITTED\n" +
+    "• INSERT registry.student\n" +
+    "• INSERT student_status_history (BR-M4-005)\n" +
+    "• NATS publish: student.enrolled\n" +
+    "• Audit log (M10) บันทึกการดำเนินการ"
+  );
+  location.href = "page-list.html";
+}
+
+function init() {
+  if (target) {
+    const acct = mockAccounts[target.account_id];
+    document.getElementById("is-name").textContent = acct ? acct.name_th_first + " " + acct.name_th_last : target.account_id;
+
+    /* Populate account select */
+    document.getElementById("is-account").innerHTML = `<option value="">— เลือกบัญชี —</option>` +
+      Object.values(mockAccounts).filter((a) => a.type === "STUDENT")
+        .map((a) => `<option value="${a.account_id}" ${a.account_id === target.account_id ? "selected" : ""}>${a.name_th_first} ${a.name_th_last} (${a.email})</option>`).join("");
+
+    /* Populate program version select */
+    document.getElementById("is-program").innerHTML = `<option value="">— เลือกหลักสูตร —</option>` +
+      Object.values(mockProgramVersions)
+        .filter((p) => p.program_id === target.program_id)
+        .map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+
+    /* Populate advisor select */
+    document.getElementById("is-advisor").innerHTML = `<option value="">— ไม่มี (เลือกภายหลัง) —</option>` +
+      Object.values(mockInstructors)
+        .filter((i) => i.status !== "TERMINATED")
+        .map((i) => `<option value="${i.instructor_id}">${i.name}</option>`).join("");
+  }
+  notifyParentPage("list");
+}
+</script>
+</body>
+</html>

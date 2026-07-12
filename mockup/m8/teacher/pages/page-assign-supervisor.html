@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · มอบหมายอาจารย์นิเทศ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 8. AssignSupervisor — UC-12 ═══ -->
+<div>
+  <a id="as-back" href="page-track-t.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">มอบหมายอาจารย์นิเทศ — <span id="as-student-name" class="text-amber-700"></span></h1>
+  <div id="as-list" class="space-y-2 max-w-md mb-3"></div>
+  <button onclick="saveSupervisor()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_tc_students", seedStudents);
+let companies = loadData("m8_tc_companies", seedCompanies);
+const studentId = Number(new URLSearchParams(location.search).get("student"));
+const curTrackStudent = students.find((s) => s.id === studentId);
+
+/* ═══ UC-12 — มอบหมายอาจารย์นิเทศ ═══ */
+function saveSupervisor() {
+  const id = document.querySelector('input[name="sup-choice"]:checked')?.value;
+  if (!id) { alert("เลือกอาจารย์นิเทศก่อน"); return; }
+  curTrackStudent.application.supervisorId = Number(id);
+  saveData("m8_tc_students", students);
+  alert("มอบหมายอาจารย์นิเทศแล้ว");
+  window.location.href = "page-track-t.html?student=" + studentId;
+}
+
+function render() {
+  document.getElementById("as-back").href = "page-track-t.html?student=" + studentId;
+  document.getElementById("as-student-name").textContent = curTrackStudent.name;
+  const companyType = companies.find((c) => c.id === curTrackStudent.application.companyId)?.type;
+  document.getElementById("as-list").innerHTML = mockInstructors.map((i) => `
+    <label class="flex items-center gap-2 text-sm border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 cursor-pointer">
+      <input type="radio" name="sup-choice" value="${i.id}" ${curTrackStudent.application.supervisorId === i.id ? "checked" : ""}>
+      <span class="font-semibold">${i.name}</span><span class="text-gray-400 text-xs">${i.expertise}</span>
+      ${i.expertise === companyType ? `<span class="text-green-700 text-xs ml-auto">expertise ตรงกับบริษัท</span>` : ""}
+    </label>`).join("");
+}
+
+function init() {
+  if (!enforceRole(["manager"])) return;
+  render();
+  notifyParentPage("track-t");
+}
+</script>
+</body>
+</html>

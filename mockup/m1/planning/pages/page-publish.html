@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 Planning · เผยแพร่ตารางเรียน (Publish)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+    .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<h1 class="text-2xl font-bold mb-6 text-gray-800">เผยแพร่ตารางเรียน (Publish)</h1>
+<div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+  <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+  <div>
+    <p class="text-sm text-yellow-800 font-semibold">ขั้นตอนสุดท้ายก่อนประกาศใช้</p>
+    <p class="text-xs text-yellow-700 mt-1">ระบบจะตรวจสอบความขัดแย้ง (Conflict) อัตโนมัติ หากมีข้อผิดพลาดจะต้องแก้ไขก่อนจึงจะเผยแพร่ได้</p>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+  <table class="w-full text-sm"><thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500"><tr><th class="text-left px-4 py-3">รหัส Section</th><th class="text-left px-4 py-3">วิชา</th><th class="text-left px-4 py-3">สถานะการตรวจสอบ</th><th class="px-4 py-3 text-right">การจัดการ</th></tr></thead><tbody id="pub-rows"></tbody></table>
+</div>
+
+<p id="pub-error" class="text-sm text-red-600 font-semibold bg-red-50 p-3 rounded-lg hidden mb-4 border border-red-200"></p>
+
+<div class="flex justify-end">
+  <button onclick="publishSchedule()" class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl px-8 py-3 shadow-lg transition-transform active:scale-95 flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    Submit เผยแพร่ตารางเรียน
+  </button>
+</div>
+
+<div id="pub-requests" class="mt-8 pt-6 border-t border-gray-200">
+  <h3 class="text-lg font-bold text-gray-700 mb-4">คำขอแก้ไขหลังเผยแพร่ (Edit Requests)</h3>
+  <div class="space-y-3"></div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let rooms = loadData("m1p_rooms", seedRooms);
+let timeslots = loadData("m1p_timeslots", seedTimeslots);
+let sections = loadData("m1p_sections", seedSections);
+let editRequests = loadData("m1p_edit_requests", []);
+
+/* ═══ UC-B12/B13 — เผยแพร่ ═══ */
+function publishSchedule() {
+  const err = document.getElementById("pub-error");
+  const unresolved = sections.some((s) => findConflicts(s.roomId, getInstructorIds(s), s.timeslotId, s.id).length > 0);
+  if (unresolved) {
+    err.textContent = "มี section ที่ยังมี conflict ค้างอยู่ — แก้ไขให้เรียบร้อยก่อนเผยแพร่";
+    err.classList.remove("hidden");
+    return;
+  }
+  err.classList.add("hidden");
+  sections.forEach((s) => s.status = "PUBLISHED");
+  saveData("m1p_sections", sections);
+  alert("เผยแพร่ตารางเรียนแล้ว");
+  render();
+}
+
+function approveEditRequest(id) {
+  const r = editRequests.find((x) => x.id === id); r.status = "APPROVED";
+  const s = sections.find((x) => x.id === r.sectionId); s.status = "DRAFT";
+  saveData("m1p_edit_requests", editRequests); saveData("m1p_sections", sections);
+  alert("อนุมัติคำขอแก้ไขแล้ว"); render();
+}
+
+function render() {
+  document.getElementById("pub-rows").innerHTML = sections.map((s) => {
+    const conflict = findConflicts(s.roomId, getInstructorIds(s), s.timeslotId, s.id).length > 0;
+    return `<tr class="border-t border-gray-100 hover:bg-gray-50"><td class="px-4 py-3 font-mono font-semibold text-xs">${s.courseCode}·Sec${s.sec}</td><td class="px-4 py-3">${s.courseCode}</td>
+      <td class="px-4 py-3">${conflict ? `<span class="text-red-600 text-xs font-bold flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Conflict</span>` : `<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.status === "PUBLISHED" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}">${s.status}</span>`}</td>
+      <td class="px-4 py-3 text-right">${s.status === "PUBLISHED" ? `<a href="page-edit-request.html?id=${s.id}" class="text-teal-700 hover:bg-teal-50 rounded-lg px-3 py-1 text-xs font-medium border border-teal-200 transition-colors">ขอแก้ไข</a>` : ""}</td></tr>`;
+  }).join("");
+
+  document.getElementById("pub-requests").querySelector('div').innerHTML = editRequests.length
+    ? editRequests.map((r) => `
+        <div class="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between shadow-sm">
+          <div><p class="text-sm font-medium text-gray-800">SEC-${r.sectionId.toString().slice(-4)} — <span class="text-gray-600 font-normal">${r.reason}</span></p><p class="text-xs text-gray-400 mt-1">สถานะ: <span class="font-semibold ${r.status==='PENDING'?'text-amber-600':'text-green-600'}">${r.status}</span></p></div>
+          ${r.status === "PENDING" ? `<button onclick="approveEditRequest(${r.id})" class="bg-green-50 text-green-700 hover:bg-green-100 rounded-lg px-3 py-1.5 text-xs font-semibold border border-green-200 transition-colors">อนุมัติ</button>` : ""}
+        </div>`).join("") : "<p class='text-sm text-gray-400 italic'>ไม่มีคำขอแก้ไข</p>";
+}
+
+function init() { render(); notifyParentPage("publish"); }
+</script>
+</body>
+</html>

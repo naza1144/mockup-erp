@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · วัดผล CLO/PLO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 17. Attainment Dashboard ═══ -->
+<div>
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold">วัดผล CLO / PLO</h1>
+    <div class="space-x-2">
+      <a href="page-clo-measure.html" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">กำหนดวิธีวัด CLO</a>
+      <a href="page-clo-import.html" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">นำเข้าคะแนน</a>
+      <a id="dashboard-link" href="page-plo-dashboard.html" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">Dashboard PLO</a>
+    </div>
+  </div>
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs text-gray-500">CLO ที่วัดผลแล้ว</p>
+      <p class="text-2xl font-bold text-violet-700" id="att-clo-measured">0</p>
+      <p class="text-xs text-gray-400">จากทั้งหมด <span id="att-clo-total">0</span> CLO</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs text-gray-500">PLO ที่ถึงเกณฑ์</p>
+      <p class="text-2xl font-bold text-green-600" id="att-plo-pass">0</p>
+      <p class="text-xs text-gray-400">จากทั้งหมด <span id="att-plo-total">0</span> PLO</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs text-gray-500">PLO ต่ำกว่าเกณฑ์</p>
+      <p class="text-2xl font-bold text-red-600" id="att-plo-alert">0</p>
+    </div>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-semibold">CLO Attainment (UC-A25)</p>
+      <select id="att-course-filter" onchange="renderAttainment()" class="border border-gray-300 rounded-lg px-2 py-1 text-sm"></select>
+    </div>
+    <div id="att-clo-chart" class="space-y-2"></div>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-semibold">PLO Attainment (UC-A26)</p>
+      <div class="space-x-2">
+        <a id="trend-link" href="page-plo-trend.html" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-2 py-1 border border-violet-200">แนวโน้ม (UC-A28)</a>
+        <a id="alert-link" href="page-plo-alert.html" class="text-sm text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 border border-red-200">แจ้งเตือน (UC-A29)</a>
+      </div>
+    </div>
+    <div id="att-plo-summary" class="space-y-2"></div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let programs = loadData("m1c_programs", seedPrograms);
+let courses = loadData("m1c_courses", seedCourses);
+let cloMeasures = loadData("m1c_clo_measures", seedCloMeasures);
+let cloScores = loadData("m1c_clo_scores", seedCloScores);
+let ploAttainment = loadData("m1c_plo_attainment", seedPloAttainment);
+const pid = Number(new URLSearchParams(location.search).get("pid")) || programs[0].id;
+let curProgram = programs.find((p) => p.id === pid) || programs[0];
+
+function renderAttainment() {
+  const courseId = Number(document.getElementById("att-course-filter").value);
+  const course = courses.find((c) => c.course_id === courseId);
+  if (!course || !course.clos.length) {
+    document.getElementById("att-clo-chart").innerHTML = '<p class="text-sm text-gray-400 text-center py-4">ไม่มีข้อมูล</p>'; return;
+  }
+  const scores = cloScores[courseId]?.["2569/1"] || {};
+  document.getElementById("att-clo-chart").innerHTML = course.clos.map((clo) => {
+    const s = scores[clo.clo_id]; const pct = s ? s.avg : 0;
+    const color = pct >= 80 ? "bg-green-500" : pct >= 60 ? "bg-amber-500" : "bg-red-500";
+    return `<div><div class="flex justify-between text-xs mb-1"><span>${clo.code}</span><span>${pct}%</span></div>
+      <div class="w-full bg-gray-200 rounded-full h-3"><div class="${color} h-3 rounded-full" style="width:${pct}%"></div></div></div>`;
+  }).join("");
+}
+function renderPloSummary() {
+  document.getElementById("att-plo-summary").innerHTML = (curProgram.plos || []).map((plo) => {
+    const d = ploAttainment[plo.plo_id]?.["2569"]; const pct = d ? Math.round(d.score*100) : 0;
+    const pass = d?.pass;
+    return `<div class="flex items-center justify-between"><p class="text-sm">${plo.code} — ${plo.description}</p>
+      <div class="flex items-center gap-2"><div class="w-32 bg-gray-200 rounded-full h-3"><div class="${pass ? "bg-green-500" : "bg-red-500"} h-3 rounded-full" style="width:${pct}%"></div></div>
+        <span class="text-xs font-semibold ${pass ? "text-green-700" : "text-red-600"}">${pct}%</span></div></div>`;
+  }).join("");
+}
+
+function render() {
+  const allClosFlat = courses.flatMap((c) => (c.clos || []));
+  document.getElementById("att-clo-total").textContent = allClosFlat.length;
+  const measuredCount = Object.keys(cloMeasures).reduce((sum, cid2) => sum + Object.keys(cloMeasures[cid2].clos).length, 0);
+  document.getElementById("att-clo-measured").textContent = measuredCount;
+  document.getElementById("att-plo-total").textContent = (curProgram.plos || []).length;
+  const passCount = (curProgram.plos || []).filter((p) => ploAttainment[p.plo_id]?.["2569"]?.pass).length;
+  document.getElementById("att-plo-pass").textContent = passCount;
+  document.getElementById("att-plo-alert").textContent = (curProgram.plos || []).length - passCount;
+
+  document.getElementById("att-course-filter").innerHTML = courses.map((c) => `<option value="${c.course_id}">${c.code}</option>`).join("");
+  renderAttainment(); renderPloSummary();
+}
+
+function init() {
+  document.getElementById("dashboard-link").href = "page-plo-dashboard.html?pid=" + curProgram.id;
+  document.getElementById("trend-link").href = "page-plo-trend.html?pid=" + curProgram.id;
+  document.getElementById("alert-link").href = "page-plo-alert.html?pid=" + curProgram.id;
+  render();
+  notifyParentPage("attainment");
+}
+</script>
+</body>
+</html>

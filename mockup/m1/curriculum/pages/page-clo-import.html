@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · นำเข้าคะแนน CLO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 19. Import CLO Scores — UC-A23 ═══ -->
+<div>
+  <a href="page-attainment.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">นำเข้าคะแนน CLO (UC-A23)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-2xl space-y-3">
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="text-sm font-semibold text-gray-700">รายวิชา</label>
+        <select id="ci-course" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></select></div>
+      <div><label class="text-sm font-semibold text-gray-700">ภาคเรียน</label>
+        <select id="ci-term" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+          <option value="2569/1">2569/1</option><option value="2569/2">2569/2</option>
+        </select></div>
+    </div>
+    <div><label class="text-sm font-semibold text-gray-700">CSV: student_code, clo_code, score</label>
+      <textarea id="ci-csv" rows="4" placeholder="STU001,CLO1,85" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"></textarea></div>
+    <button onclick="importCloScores()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl px-4 py-2">ตรวจสอบ & นำเข้า</button>
+    <div id="ci-result" class="hidden text-sm space-y-1"></div>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let courses = loadData("m1c_courses", seedCourses);
+let cloScores = loadData("m1c_clo_scores", seedCloScores);
+
+function importCloScores() {
+  const courseId = Number(document.getElementById("ci-course").value);
+  const term = document.getElementById("ci-term").value;
+  const lines = document.getElementById("ci-csv").value.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) { alert("ใส่ CSV"); return; }
+  const scores = {}; let ok = 0, fail = 0;
+  lines.forEach((line) => {
+    const parts = line.split(",");
+    if (parts.length < 3) { fail++; return; }
+    const cloId = parts[1].trim();
+    const score = Number(parts[2].trim());
+    if (!cloId || isNaN(score)) { fail++; return; }
+    scores[cloId] = scores[cloId] || { sum: 0, count: 0 };
+    scores[cloId].sum += score; scores[cloId].count++; ok++;
+  });
+  const result = {};
+  Object.keys(scores).forEach((k) => result[k] = { avg: Math.round(scores[k].sum / scores[k].count), count: scores[k].count, passRate: Math.round(Math.random()*30+60) });
+  cloScores[courseId] = cloScores[courseId] || {}; cloScores[courseId][term] = result;
+  saveData("m1c_clo_scores", cloScores);
+  document.getElementById("ci-result").innerHTML = `<p>นำเข้า ${ok} สำเร็จ · ข้าม ${fail}</p>`;
+  document.getElementById("ci-result").classList.remove("hidden");
+}
+
+function init() {
+  document.getElementById("ci-course").innerHTML = courses.map((c) => `<option value="${c.course_id}">${c.code}</option>`).join("");
+  notifyParentPage("clo-import");
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · ตารางนัดนิเทศ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>body{font-family:'Noto Sans Thai',sans-serif}.cal-cell{height:132px;vertical-align:top}</style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+<div class="max-w-6xl">
+  <h1 class="text-2xl font-bold mb-4">ตารางนัดนิเทศ</h1>
+  <div class="bg-white border border-gray-200 rounded-xl p-4 mb-5">
+    <p class="text-sm font-semibold mb-3">เพิ่มวันว่าง/นัดนิเทศนักศึกษา</p>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div><label class="text-sm font-semibold">วันที่</label><input id="cal-date" type="date" class="w-full border rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold">เวลา</label><input id="cal-time" type="time" class="w-full border rounded-lg px-3 py-2 text-sm mt-1"></div>
+      <div><label class="text-sm font-semibold">รูปแบบ</label><select id="cal-mode" onchange="toggleMeetLink()" class="w-full border rounded-lg px-3 py-2 text-sm mt-1"><option value="ONSITE">Onsite</option><option value="ONLINE">Online</option></select></div>
+      <div id="meet-field" class="hidden"><label class="text-sm font-semibold">ลิงก์ Meet</label><input id="cal-meet" type="url" placeholder="https://meet.google.com/..." class="w-full border rounded-lg px-3 py-2 text-sm mt-1"></div>
+    </div>
+    <div class="mt-3"><label class="text-sm font-semibold">หมายเหตุ</label><input id="cal-note" placeholder="เช่น นิเทศครั้งที่ 1 / ชื่อนักศึกษา" class="w-full border rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <p id="cal-error" class="text-xs text-red-600 hidden mt-2"></p>
+    <button onclick="addSlot()" class="mt-3 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg px-4 py-2">เพิ่มวันว่าง/นัดนิเทศ</button>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b"><button onclick="changeMonth(-1)" title="เดือนก่อน" class="w-9 h-9 border rounded-lg">‹</button><p id="month-title" class="font-semibold"></p><button onclick="changeMonth(1)" title="เดือนถัดไป" class="w-9 h-9 border rounded-lg">›</button></div>
+    <div class="overflow-x-auto"><table class="w-full table-fixed min-w-[820px] text-sm"><thead class="bg-gray-50"><tr id="weekday-row"></tr></thead><tbody id="calendar-body"></tbody></table></div>
+  </div>
+</div>
+<script src="../shared.js"></script>
+<script>
+let slots=loadData("m8_supervision_slots",seedSupervisionSlots),viewDate=new Date(2026,6,1);
+const dayNames=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"],monthNames=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+function toggleMeetLink(){document.getElementById("meet-field").classList.toggle("hidden",document.getElementById("cal-mode").value!=="ONLINE")}
+function addSlot(){const date=document.getElementById("cal-date").value,time=document.getElementById("cal-time").value,mode=document.getElementById("cal-mode").value,meetLink=document.getElementById("cal-meet").value.trim(),note=document.getElementById("cal-note").value.trim(),err=document.getElementById("cal-error");if(!date||!time){err.textContent="กรุณาเลือกวันที่และเวลา";err.classList.remove("hidden");return}if(mode==="ONLINE"&&!/^https:\/\/(meet\.google\.com|teams\.microsoft\.com)\//i.test(meetLink)){err.textContent="การนัด Online ต้องระบุลิงก์ Meet ที่ถูกต้อง";err.classList.remove("hidden");return}err.classList.add("hidden");slots.push({id:Date.now(),date,time,mode,meetLink:mode==="ONLINE"?meetLink:"",note,createdBy:TEACHER_ACTOR_LABEL,googleAdded:false});saveData("m8_supervision_slots",slots);viewDate=new Date(date+"T00:00:00");renderCalendar()}
+function addToGoogleCalendar(id){const slot=slots.find(s=>s.id===id);if(!slot)return;slot.googleAdded=true;saveData("m8_supervision_slots",slots);renderCalendar();alert("เพิ่มนัดใน Google Calendar แล้ว (จำลอง)")}
+function changeMonth(n){viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth()+n,1);renderCalendar()}
+function dateKey(y,m,d){return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`}
+function renderEvent(s){const mode=s.mode==="ONLINE"?`<a href="${s.meetLink}" target="_blank" class="underline">Meet</a>`:"Onsite",action=s.googleAdded?`<span class="block text-[10px] text-green-700 mt-1">เพิ่มใน Google Calendar แล้ว</span>`:`<button onclick="addToGoogleCalendar(${s.id})" class="block text-[10px] underline mt-1">เพิ่มใน Google Calendar</button>`;return `<div class="mt-1 rounded bg-amber-50 border border-amber-200 p-1.5 text-[11px] leading-4"><b>${s.time}</b> · ${mode}<br>${s.note||"นัดนิเทศ"}<br><span class="text-gray-500">โดย ${s.createdBy}</span>${action}</div>`}
+function renderCalendar(){const y=viewDate.getFullYear(),m=viewDate.getMonth(),first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();document.getElementById("month-title").textContent=`${monthNames[m]} ${y+543}`;document.getElementById("weekday-row").innerHTML=dayNames.map(d=>`<th class="px-2 py-2 border-r text-xs">${d}</th>`).join("");let html="",day=1;for(let row=0;row<6;row++){html+="<tr>";for(let col=0;col<7;col++){if((row===0&&col<first)||day>days)html+=`<td class="cal-cell border-t border-r bg-gray-50"></td>`;else{const key=dateKey(y,m,day),events=slots.filter(s=>s.date===key);html+=`<td class="cal-cell border-t border-r p-2"><span class="text-xs font-semibold">${day}</span>${events.map(renderEvent).join("")}</td>`;day++}}html+="</tr>";if(day>days)break}document.getElementById("calendar-body").innerHTML=html}
+function init(){renderCalendar();notifyParentPage("calendar")}
+</script>
+</body>
+</html>

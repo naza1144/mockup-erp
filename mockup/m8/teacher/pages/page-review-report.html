@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · รายงานรอตรวจ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 10. ReviewWeeklyReport — UC-15 ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">รายงานรอตรวจ</h1>
+  <div id="rr-list" class="space-y-2 mb-4"></div>
+  <div id="rr-form" class="hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-2 text-sm">
+    <p><span class="text-gray-500">สรุปงาน:</span> <span id="rr-summary"></span></p>
+    <p><span class="text-gray-500">ปัญหา:</span> <span id="rr-problems"></span></p>
+    <p><span class="text-gray-500">สิ่งที่เรียนรู้:</span> <span id="rr-knowledge"></span></p>
+    <p><span class="text-gray-500">ข้อเสนอแนะพี่เลี้ยง:</span> <span id="rr-feedback"></span></p>
+    <div><label class="text-sm font-semibold text-gray-700">ความเห็นอาจารย์</label><textarea id="rr-comment" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <button onclick="ackReport()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">รับทราบ</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_tc_students", seedStudents);
+let curReportCtx = null;
+
+/* ═══ UC-15 — ตรวจ/รับทราบรายงาน ═══ */
+function openReviewReport(studentId, week) { curReportCtx = { studentId, week }; render(); document.getElementById("rr-form").classList.remove("hidden"); }
+function ackReport() {
+  const s = students.find((x) => x.id === curReportCtx.studentId); const r = s.application.weeklyReports.find((x) => x.week === curReportCtx.week);
+  r.status = "ACKNOWLEDGED"; r.comment = document.getElementById("rr-comment").value;
+  saveData("m8_tc_students", students); curReportCtx = null; document.getElementById("rr-form").classList.add("hidden");
+  alert("รับทราบรายงานแล้ว"); render();
+}
+
+function render() {
+  const pendingReports = students.flatMap((s) => (s.application?.weeklyReports || []).filter((r) => r.status === "SUBMITTED").map((r) => ({ s, r })));
+  document.getElementById("rr-list").innerHTML = pendingReports.map(({ s, r }) => `
+    <div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+      <div><p class="text-sm font-semibold">${s.name} — สัปดาห์ที่ ${r.week}</p></div>
+      <button onclick="openReviewReport(${s.id},${r.week})" class="text-amber-700 hover:bg-amber-50 rounded-lg px-2 py-1 text-xs">ตรวจ</button>
+    </div>`).join("") || `<p class="text-sm text-gray-400">ไม่มีรายงานรอตรวจ</p>`;
+  if (curReportCtx) {
+    const s = students.find((x) => x.id === curReportCtx.studentId); const r = s.application.weeklyReports.find((x) => x.week === curReportCtx.week);
+    document.getElementById("rr-summary").textContent = r.summary; document.getElementById("rr-problems").textContent = r.problems;
+    document.getElementById("rr-knowledge").textContent = r.knowledge; document.getElementById("rr-feedback").textContent = r.feedback;
+  }
+}
+
+function init() {
+  if (!enforceRole(["supervisor"])) return;
+  render();
+  notifyParentPage("review-report");
+}
+</script>
+</body>
+</html>

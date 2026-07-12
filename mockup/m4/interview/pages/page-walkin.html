@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 กรรมการสัมภาษณ์ · ลงทะเบียน Walk-in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+    .queue-card { transition: all 0.2s ease; }
+    .queue-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .status-pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .badge-online { background: #dbeafe; color: #1d4ed8; }
+    .badge-onsite { background: #fef3c7; color: #b45309; }
+    .badge-waiting { background: #f3f4f6; color: #6b7280; }
+    .badge-interviewing { background: #dbeafe; color: #2563eb; }
+    .badge-done { background: #d1fae5; color: #059669; }
+    .badge-skipped { background: #fee2e2; color: #dc2626; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ══════════════════════ PAGE: WALK-IN REGISTRATION ══════════════════════ -->
+<div>
+  <a href="page-queue.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับคิวสัมภาษณ์</a>
+  <h1 class="text-2xl font-bold mb-4">ลงทะเบียน Walk-in</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-xs text-gray-500">เพิ่มผู้สมัครที่เดินเข้ามาสมัครวันนี้โดยไม่ต้องนัดหมายล่วงหน้า</p>
+
+    <div>
+      <label class="text-sm font-semibold text-gray-700">ชื่อ-นามสกุล</label>
+      <input id="wi-name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-green-300" placeholder="เช่น ราชภัฏ บุญรอด">
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-sm font-semibold text-gray-700">อีเมล</label>
+        <input id="wi-email" type="email" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-green-300" placeholder="Ratchapat@ubu.ac.th">
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700">เบอร์โทร</label>
+        <input id="wi-phone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-green-300" placeholder="08X-XXX-XXXX">
+      </div>
+    </div>
+    <div>
+      <label class="text-sm font-semibold text-gray-700">หลักสูตรที่สมัคร</label>
+      <select id="wi-program" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option>วิทยาการข้อมูลและนวัตกรรมซอฟต์แวร์</option>
+      </select>
+    </div>
+
+    <!-- เลือก Online / Onsite -->
+    <div>
+      <label class="text-sm font-semibold text-gray-700 mb-2 block">รูปแบบสัมภาษณ์</label>
+      <div class="flex gap-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="wi-mode" value="online" checked onchange="toggleWiFields()"
+            class="accent-blue-600 w-4 h-4">
+          <span class="flex items-center gap-1.5 text-sm">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> ออนไลน์
+          </span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="wi-mode" value="onsite" onchange="toggleWiFields()"
+            class="accent-amber-600 w-4 h-4">
+          <span class="flex items-center gap-1.5 text-sm">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> ออนไซต์
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Online fields -->
+    <div id="wi-online-fields">
+      <label class="text-sm font-semibold text-gray-700">ลิงก์ห้องประชุมออนไลน์</label>
+      <input id="wi-link" placeholder="https://meet.example.com/room-..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300">
+    </div>
+    <!-- Onsite fields -->
+    <div id="wi-onsite-fields" class="hidden">
+      <label class="text-sm font-semibold text-gray-700">สถานที่สัมภาษณ์</label>
+      <input id="wi-place" placeholder="เช่น ห้องสัมภาษณ์คณะวิศวกรรมศาสตร์ ชั้น 3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-amber-300">
+    </div>
+
+    <p id="wi-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="submitWalkin()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl px-4 py-2">เพิ่มเข้าคิว</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let queue = loadQueue();
+
+/* ===== Walk-in fields toggle ===== */
+function toggleWiFields() {
+  const isOnline = document.querySelector('input[name="wi-mode"]:checked').value === 'online';
+  document.getElementById('wi-online-fields').classList.toggle('hidden', !isOnline);
+  document.getElementById('wi-onsite-fields').classList.toggle('hidden', isOnline);
+}
+
+/* ===== Walk-in submit ===== */
+function submitWalkin() {
+  const name = document.getElementById('wi-name').value.trim();
+  const email = document.getElementById('wi-email').value.trim();
+  const phone = document.getElementById('wi-phone').value.trim();
+  const program = document.getElementById('wi-program').value;
+  const isOnline = document.querySelector('input[name="wi-mode"]:checked').value === 'online';
+  const link = document.getElementById('wi-link').value.trim();
+  const place = document.getElementById('wi-place').value.trim();
+  const err = document.getElementById('wi-error');
+
+  if (!name || !email) {
+    err.textContent = 'กรุณากรอกชื่อและอีเมล'; err.classList.remove('hidden'); return;
+  }
+  if (isOnline && !link) {
+    err.textContent = 'กรุณากรอกลิงก์ห้องประชุมออนไลน์'; err.classList.remove('hidden'); return;
+  }
+  if (!isOnline && !place) {
+    err.textContent = 'กรุณากรอกสถานที่สัมภาษณ์'; err.classList.remove('hidden'); return;
+  }
+  err.classList.add('hidden');
+
+  const now = new Date();
+  const newId = Date.now();
+  const applicant = {
+    id: newId,
+    name, email, phone, program,
+    mode: isOnline ? 'online' : 'onsite',
+    link: isOnline ? link : null,
+    place: isOnline ? null : place,
+    status: 'WAITING',
+    arrivedAt: now.toTimeString().slice(0, 5),
+    score: null, decision: null, comment: null
+  };
+  queue.unshift(applicant);
+  saveData('m4_interview_queue', queue);
+  alert(`เพิ่ม ${name} เข้าคิวสัมภาษณ์ (${isOnline ? 'ออนไลน์' : 'ออนไซต์'}) เรียบร้อย`);
+  window.location.href = 'page-queue.html';
+}
+
+function init() { notifyParentPage('walkin'); }
+</script>
+</body>
+</html>

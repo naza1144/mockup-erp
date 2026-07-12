@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 บริษัท · แก้ไขผลประเมิน</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ EditEval — UC-18 ═══ -->
+<div class="max-w-2xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">แก้ไขผลประเมิน — <span id="ee-student-name" class="text-amber-700"></span></h1>
+  <div id="ee-locked-banner" class="hidden mb-4 bg-gray-100 border border-gray-200 text-gray-600 text-sm rounded-xl px-4 py-3">
+    อาจารย์รับทราบผลประเมินนี้แล้ว — ไม่สามารถแก้ไขได้อีก (Alternative Flow UC-18)
+  </div>
+  <div id="ee-form" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-md space-y-3">
+    <div><label class="text-sm font-semibold text-gray-700">สมรรถนะ (0-100)</label><input id="ee-competence" type="number" min="0" max="100" oninput="updateEditEvalTotal()" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div><label class="text-sm font-semibold text-gray-700">ทัศนคติ (0-100)</label><input id="ee-attitude" type="number" min="0" max="100" oninput="updateEditEvalTotal()" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <div><label class="text-sm font-semibold text-gray-700">ผลงาน (0-100)</label><input id="ee-quality" type="number" min="0" max="100" oninput="updateEditEvalTotal()" class="w-full max-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
+    <p class="text-sm font-semibold">คะแนนรวมเฉลี่ย: <span id="ee-total">0</span> / 100</p>
+    <div><label class="text-sm font-semibold text-gray-700">จุดเด่น</label><textarea id="ee-strengths" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <div><label class="text-sm font-semibold text-gray-700">ความเห็น/ข้อเสนอแนะ</label><textarea id="ee-comments" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea></div>
+    <button onclick="saveEditEvaluation()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let students = loadData("m8_co_students", seedStudents);
+const curStudentId = Number(new URLSearchParams(location.search).get("id"));
+let curStudent = students.find((s) => s.id === curStudentId);
+
+/* ═══ UC-18 — แก้ไขผลประเมิน (ล็อกเมื่ออาจารย์รับทราบแล้ว) ═══ */
+function updateEditEvalTotal() {
+  const c = Number(document.getElementById("ee-competence").value || 0), a = Number(document.getElementById("ee-attitude").value || 0), q = Number(document.getElementById("ee-quality").value || 0);
+  document.getElementById("ee-total").textContent = Math.round((c + a + q) / 3 * 100) / 100;
+}
+function saveEditEvaluation() {
+  if (!curStudent.evaluation.canEdit) return;
+  const c = Number(document.getElementById("ee-competence").value || 0), a = Number(document.getElementById("ee-attitude").value || 0), q = Number(document.getElementById("ee-quality").value || 0);
+  const total = Math.round((c + a + q) / 3 * 100) / 100;
+  /* ระบบจริง: PUT /companies/me/evaluations/{id} */
+  Object.assign(curStudent.evaluation, { competence: c, attitude: a, quality: q, total, strengths: document.getElementById("ee-strengths").value, comments: document.getElementById("ee-comments").value });
+  saveData("m8_co_students", students);
+  alert("แก้ไขผลประเมินสำเร็จ"); window.location.href = "page-list.html";
+}
+
+function render() {
+  if (!curStudent) return;
+  document.getElementById("ee-student-name").textContent = curStudent.name;
+  if (curStudent.evaluation) {
+    document.getElementById("ee-competence").value = curStudent.evaluation.competence;
+    document.getElementById("ee-attitude").value = curStudent.evaluation.attitude;
+    document.getElementById("ee-quality").value = curStudent.evaluation.quality;
+    document.getElementById("ee-strengths").value = curStudent.evaluation.strengths;
+    document.getElementById("ee-comments").value = curStudent.evaluation.comments;
+    updateEditEvalTotal();
+    document.getElementById("ee-locked-banner").classList.toggle("hidden", curStudent.evaluation.canEdit);
+    document.getElementById("ee-form").querySelectorAll("input,textarea,button").forEach((el) => el.disabled = !curStudent.evaluation.canEdit);
+  }
+}
+
+function init() {
+  render();
+  notifyParentPage("edit-eval");
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · ให้คะแนนสอบ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ ScoreExam — UC-17 ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">ให้คะแนนสอบ</h1>
+  <p class="text-xs text-gray-500 mb-3">ระบบจริง: INSERT <code>defense_score</code> — 1 row ต่อ (defense_id, committee_member_id, criterion_id) UNIQUE</p>
+  <div id="score-due-list" class="mb-4 space-y-2"></div>
+  <div id="score-form-wrap" class="hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-3">
+    <p class="text-sm">หัวข้อ: <span id="sc-title" class="font-semibold"></span> · ประเภท: <span id="sc-type"></span></p>
+    <p class="text-xs text-gray-500">คะแนนดิบ (0–100) · น้ำหนักตาม <code>score_criterion.weight</code> (SUM=100 per defense_type · BR-M9-003)</p>
+    <div id="sc-items" class="space-y-2"></div>
+    <p class="text-sm font-semibold">คะแนนถ่วงน้ำหนักของฉัน: <span id="sc-total">0</span></p>
+    <p id="sc-error" class="text-xs text-red-600 hidden">กรอกคะแนนให้ครบทุกหัวข้อก่อนบันทึก (Alternative Flow UC-17)</p>
+    <button onclick="saveScore()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกคะแนน</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let theses = loadData("m9_sc_theses", seedTheses);
+let scoreCriteria = loadData("m9_sc_criteria", defaultCriteria());
+const qs = new URLSearchParams(location.search);
+const tid = qs.get("tid") ? Number(qs.get("tid")) : null;
+const idx = qs.get("idx") ? Number(qs.get("idx")) : null;
+const target = tid ? theses.find((x) => x.id === tid) : null;
+
+function criteriaTypeOf(d) { return d.type === "PROPOSAL" ? "proposal" : d.type === "PROGRESS" ? "progress" : "final"; }
+
+function saveScore() {
+  const d = target.defenses[idx];
+  const items = scoreCriteria[criteriaTypeOf(d)] || [];
+  const err = document.getElementById("sc-error");
+  const values = items.map((it) => Number(document.getElementById("sc-item-" + it.name).value));
+  if (values.some((v) => !v && v !== 0)) { err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  const total = items.reduce((sum, it, i) => sum + values[i] * it.weight / 100, 0);
+  d.scores[ME_INSTRUCTOR_ID] = { values, total: Math.round(total * 100) / 100 };
+  saveData("m9_sc_theses", theses);
+  alert("บันทึกคะแนนแล้ว — INSERT defense_score (defense_id, committee_member_id, criterion_id, score)");
+  window.location.href = "page-score.html";
+}
+function updateScoreTotal() {
+  const d = target.defenses[idx];
+  const items = scoreCriteria[criteriaTypeOf(d)] || [];
+  let total = 0;
+  items.forEach((it) => { const el = document.getElementById("sc-item-" + it.name); const v = Number(el?.value || 0); total += v * it.weight / 100; });
+  document.getElementById("sc-total").textContent = Math.round(total * 100) / 100;
+}
+
+function renderDueList() {
+  const dueList = [];
+  theses.forEach((t) => t.defenses.forEach((d, i) => {
+    if (d.due && d.committee && d.committee.includes(ME_INSTRUCTOR_ID)) {
+      const scored = !!d.scores[ME_INSTRUCTOR_ID];
+      const allScored = d.committee.every((id) => d.scores[id]);
+      dueList.push(`<div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
+        <div><p class="text-sm font-semibold">${t.title}</p><p class="text-xs text-gray-400">${DEFENSE_TYPE_TH[d.type]} · ${d.datetime} · ${d.duration} นาที · ${MODE_TH[d.mode]} · ${d.room}</p></div>
+        ${scored
+          ? allScored ? `<a href="page-summary.html?tid=${t.id}&idx=${i}" class="text-pink-700 hover:bg-pink-50 rounded-lg px-2 py-1 text-xs">ไปหน้าสรุปผล (CHAIR)</a>`
+                      : `<span class="text-xs text-gray-400">ให้คะแนนแล้ว — รอกรรมการท่านอื่น</span>`
+          : `<a href="page-score.html?tid=${t.id}&idx=${i}" class="text-pink-700 hover:bg-pink-50 rounded-lg px-2 py-1 text-xs">ให้คะแนน</a>`}
+      </div>`);
+    }
+  }));
+  document.getElementById("score-due-list").innerHTML = dueList.join("") || `<p class="text-sm text-gray-400">ไม่มีสอบที่ต้องให้คะแนนตอนนี้</p>`;
+}
+
+function init() {
+  renderDueList();
+  if (target && idx !== null) {
+    const d = target.defenses[idx];
+    document.getElementById("score-form-wrap").classList.remove("hidden");
+    document.getElementById("sc-title").textContent = target.title;
+    document.getElementById("sc-type").textContent = DEFENSE_TYPE_TH[d.type] || d.type;
+    document.getElementById("sc-items").innerHTML = (scoreCriteria[criteriaTypeOf(d)] || []).map((it) => `
+      <div class="flex items-center gap-2"><label class="text-sm flex-1">${it.name} (${it.weight}%)</label>
+        <input id="sc-item-${it.name}" type="number" min="0" max="100" oninput="updateScoreTotal()" class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm"></div>`).join("");
+    updateScoreTotal();
+  }
+  notifyParentPage("score");
+}
+</script>
+</body>
+</html>

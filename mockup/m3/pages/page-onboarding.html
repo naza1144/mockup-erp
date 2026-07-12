@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M3 ฝ่ายบุคคล · บันทึกอาจารย์ใหม่</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ Onboarding — UC-01 ═══ -->
+<div>
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการอาจารย์</a>
+  <h1 class="text-2xl font-bold mb-4">บันทึกอาจารย์ใหม่ (Onboarding)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <div>
+      <label class="text-sm font-semibold text-gray-700">บัญชีผู้ใช้จาก M0 (account_id)</label>
+      <select id="ob-account" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-orange-300">
+        <option value="">— เลือกบัญชี —</option>
+      </select>
+      <p class="text-xs text-gray-500 mt-1">BR-M3-001: ต้องเป็น account.type='FACULTY' — ไม่พบบัญชี? ต้องสร้างที่ M0 ก่อน (Alternative Flow UC-01)</p>
+    </div>
+    <div>
+      <label class="text-sm font-semibold text-gray-700">ตำแหน่งทางวิชาการ (academic_rank)</label>
+      <select id="ob-rank" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="LECTURER">อาจารย์</option>
+        <option value="ASST_PROF">ผู้ช่วยศาสตราจารย์</option>
+        <option value="ASSOC_PROF">รองศาสตราจารย์</option>
+        <option value="PROF">ศาสตราจารย์</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-sm font-semibold text-gray-700">สังกัดภาควิชา (dept_id)</label>
+      <input id="ob-dept" placeholder="dept-cs" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-orange-300">
+    </div>
+    <div>
+      <label class="text-sm font-semibold text-gray-700">สถานะเริ่มต้น</label>
+      <select id="ob-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="FULL_TIME">ประจำ</option><option value="PART_TIME">พิเศษ</option>
+      </select>
+    </div>
+    <p id="ob-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="saveOnboarding()"
+      class="bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึก</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let instructors = loadData("m3_instructors", seedInstructors);
+
+/* ═══ UC-01 Onboarding — validation: ต้องเลือกบัญชี M0 ก่อน ═══ */
+function saveOnboarding() {
+  const acc = document.getElementById("ob-account").value;
+  const rank = document.getElementById("ob-rank").value;
+  const err = document.getElementById("ob-error");
+  if (!acc) { err.textContent = "ต้องเลือกบัญชีจาก M0 ก่อน — ถ้าไม่มีให้สร้างที่ M0 ก่อน (BR-M3-001)"; err.classList.remove("hidden"); return; }
+  if (!rank) { err.textContent = "กรุณาเลือกตำแหน่งทางวิชาการ"; err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  /* ระบบจริง: POST /instructors — ต้อง validate account.type='FACULTY' ผ่าน M0 API (BR-M3-001) */
+  /* BR-M3-002: ห้าม store name ใน faculty schema — resolve จาก M0 API ตอน display */
+  const newId = genId();
+  const deptId = document.getElementById("ob-dept").value || "dept-cs";
+  instructors.push({
+    instructor_id: newId,
+    account_id: acc,
+    academic_rank: rank,
+    dept_id: deptId,
+    status: document.getElementById("ob-status").value,
+    hired_at: new Date().toISOString().slice(0,10),
+    quals: []
+  });
+  saveData("m3_instructors", instructors);
+  const name = getInstructorName(acc);
+  alert("บันทึกอาจารย์ใหม่แล้ว (จำลอง)\n\n• instructor_id: " + newId + "\n• account_id: " + acc + "\n• ชื่อ: " + name + " (resolve จาก M0 API — BR-M3-002)\n• ตรวจสอบ BR-M3-001 (validate account.type='FACULTY')");
+  window.location.href = "page-list.html";
+}
+
+function init() {
+  document.getElementById("ob-account").innerHTML =
+    `<option value="">— เลือกบัญชี —</option>` +
+    mockM0Accounts.map((a) => `<option value="${a.account_id}">${a.name_th_first} ${a.name_th_last} (${a.email})</option>`).join("");
+  notifyParentPage("list");
+}
+</script>
+</body>
+</html>

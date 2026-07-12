@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 หลักสูตร · Preview & Export</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 15. Preview & Export ═══ -->
+<div>
+  <a href="#" onclick="backToDocSource(); return false;" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">Preview & Export (<span id="pe-type"></span>)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-2xl space-y-3">
+    <p class="text-sm text-gray-600">สถานะ: <span id="pe-status" class="font-semibold"></span></p>
+    <button onclick="alert('Preview PDF (จำลอง)')" class="text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">Preview PDF</button>
+    <button onclick="exportDoc()" class="block text-sm text-violet-700 hover:bg-violet-50 rounded-lg px-3 py-1.5 border border-violet-200">Export</button>
+    <button onclick="submitDocForApproval()" class="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl px-4 py-2">Submit</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let docs = loadData("m1c_docs", seedDocs);
+const qs = new URLSearchParams(location.search);
+const curDocType = qs.get("type");
+const src = qs.get("src");
+const pid = qs.get("pid");
+const cid = qs.get("cid");
+
+function backToDocSource() {
+  if (src === "tqf2") location.href = "page-tqf2.html?pid=" + pid;
+  else if (src === "tqf3") location.href = "page-tqf3.html?cid=" + cid;
+  else if (src === "tqf4") location.href = "page-tqf4.html?cid=" + cid;
+  else location.href = "page-programs.html";
+}
+function exportDoc() {
+  docs[curDocType].fileUrl = "curriculum-docs/" + curDocType.toLowerCase() + "-" + Date.now() + ".pdf";
+  saveData("m1c_docs", docs);
+  alert("Export แล้ว"); render();
+}
+function submitDocForApproval() {
+  if (!docs[curDocType].fileUrl) { alert("Export ก่อน Submit"); return; }
+  docs[curDocType].status = "SUBMITTED"; saveData("m1c_docs", docs);
+  let url = "page-tqf-approve.html?type=" + curDocType + "&src=" + src;
+  if (pid) url += "&pid=" + pid;
+  if (cid) url += "&cid=" + cid;
+  location.href = url;
+}
+
+function render() {
+  document.getElementById("pe-type").textContent = curDocType;
+  document.getElementById("pe-status").textContent = docs[curDocType]?.status || "";
+}
+
+function init() { render(); notifyParentPage("preview-export"); }
+</script>
+</body>
+</html>

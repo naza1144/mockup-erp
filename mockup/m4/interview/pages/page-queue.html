@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M4 กรรมการสัมภาษณ์ · คิวสัมภาษณ์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+    .queue-card { transition: all 0.2s ease; }
+    .queue-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .status-pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .badge-online { background: #dbeafe; color: #1d4ed8; }
+    .badge-onsite { background: #fef3c7; color: #b45309; }
+    .badge-waiting { background: #f3f4f6; color: #6b7280; }
+    .badge-interviewing { background: #dbeafe; color: #2563eb; }
+    .badge-done { background: #d1fae5; color: #059669; }
+    .badge-skipped { background: #fee2e2; color: #dc2626; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ══════════════════════ PAGE: QUEUE ══════════════════════ -->
+<div class="max-w-6xl">
+  <!-- Stats bar -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs text-gray-500">รอสัมภาษณ์</p>
+      <p class="text-3xl font-bold" id="queue-count-waiting">0</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs text-gray-500">Online</p>
+      <p class="text-3xl font-bold text-blue-600" id="queue-count-online">0</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <p class="text-xs text-gray-500">Onsite</p>
+      <p class="text-3xl font-bold text-amber-600" id="queue-count-onsite">0</p>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="mb-4 flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+    <button id="filter-all" onclick="setFilter('all')" class="px-4 py-1.5 text-sm font-semibold rounded-lg transition bg-white text-gray-800 shadow-sm">ทั้งหมด</button>
+    <button id="filter-online" onclick="setFilter('online')" class="px-4 py-1.5 text-sm font-semibold rounded-lg transition text-gray-500 hover:text-gray-700">ออนไลน์</button>
+    <button id="filter-onsite" onclick="setFilter('onsite')" class="px-4 py-1.5 text-sm font-semibold rounded-lg transition text-gray-500 hover:text-gray-700">ออนไซต์</button>
+  </div>
+
+  <!-- Queue Actions -->
+  <div class="flex items-center justify-between mb-3">
+    <h1 class="text-2xl font-bold">คิวสัมภาษณ์</h1>
+    <div class="flex gap-2">
+      <button onclick="callNext()" id="btn-call-next"
+        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl px-4 py-2">▶ เรียกคนถัดไป</button>
+      <button onclick="location.href='page-walkin.html'"
+        class="border border-green-300 text-green-700 hover:bg-green-50 text-sm font-semibold rounded-xl px-4 py-2">+ Walk-in</button>
+    </div>
+  </div>
+
+  <!-- Queue cards -->
+  <div id="queue-cards" class="space-y-2"></div>
+  <p id="queue-empty" class="hidden text-center py-10 text-sm text-gray-400">ไม่มีผู้สมัครในคิวตามเงื่อนไขที่เลือก</p>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let queue = loadQueue();
+let currentFilter = 'all';   // 'all' | 'online' | 'onsite'
+
+/* ===== Filter ===== */
+function setFilter(f) {
+  currentFilter = f;
+  document.getElementById('filter-all').className    = 'px-4 py-1.5 text-sm font-semibold rounded-lg transition ' + (f === 'all'    ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700');
+  document.getElementById('filter-online').className = 'px-4 py-1.5 text-sm font-semibold rounded-lg transition ' + (f === 'online' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700');
+  document.getElementById('filter-onsite').className = 'px-4 py-1.5 text-sm font-semibold rounded-lg transition ' + (f === 'onsite' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700');
+  render();
+}
+
+/* ===== Call Next ===== */
+function callNext() {
+  // Check if someone is currently being interviewed
+  const interviewing = queue.find(a => a.status === 'CALLED');
+  if (interviewing) {
+    if (!confirm(`ยังมีผู้สมัคร "${interviewing.name}" กำลังสัมภาษณ์อยู่\nต้องการข้ามและเรียกคนถัดไป?`)) return;
+    // Mark as skipped
+    interviewing.status = 'SKIPPED';
+    interviewing.comment = (interviewing.comment || '') + ' [ข้ามเมื่อเรียกคนถัดไป]';
+  }
+
+  // Find next WAITING applicant matching filter
+  let next = null;
+  if (currentFilter === 'all') {
+    next = queue.find(a => a.status === 'WAITING');
+  } else {
+    next = queue.find(a => a.status === 'WAITING' && a.mode === currentFilter);
+  }
+
+  if (!next) {
+    alert('ไม่มีผู้สมัครรอในคิว');
+    saveData('m4_interview_queue', queue);
+    render();
+    return;
+  }
+
+  next.status = 'CALLED';
+  saveData('m4_interview_queue', queue);
+  location.href = 'page-interview.html?id=' + next.id;
+}
+
+/* ===== Open interview page for a specific applicant ===== */
+function callApplicant(id) {
+  const applicant = queue.find(a => a.id === id);
+  if (!applicant || applicant.status !== 'WAITING') return;
+
+  // Mark any CALLED as skipped
+  queue.forEach(a => { if (a.status === 'CALLED') { a.status = 'SKIPPED'; } });
+
+  applicant.status = 'CALLED';
+  saveData('m4_interview_queue', queue);
+  location.href = 'page-interview.html?id=' + applicant.id;
+}
+
+/* ===== Render ===== */
+function render() {
+  // --- Stats ---
+  const waiting = queue.filter(a => a.status === 'WAITING');
+  const online = queue.filter(a => a.mode === 'online' && (a.status === 'WAITING' || a.status === 'CALLED'));
+  const onsite = queue.filter(a => a.mode === 'onsite' && (a.status === 'WAITING' || a.status === 'CALLED'));
+
+  document.getElementById('queue-count-waiting').textContent = waiting.length;
+  document.getElementById('queue-count-online').textContent = online.length;
+  document.getElementById('queue-count-onsite').textContent = onsite.length;
+
+  // --- Queue cards ---
+  let filtered = queue;
+  if (currentFilter === 'online') filtered = queue.filter(a => a.mode === 'online');
+  else if (currentFilter === 'onsite') filtered = queue.filter(a => a.mode === 'onsite');
+
+  // Sort: CALLED first, then WAITING (by arrivedAt), then DONE, then SKIPPED
+  const sortOrder = { CALLED: 0, WAITING: 1, DONE: 2, SKIPPED: 3 };
+  filtered = [...filtered].sort((a, b) => {
+    const oa = sortOrder[a.status] ?? 9;
+    const ob = sortOrder[b.status] ?? 9;
+    if (oa !== ob) return oa - ob;
+    // Within same status, sort by arrivedAt (earlier first)
+    return (a.arrivedAt || '99:99').localeCompare(b.arrivedAt || '99:99');
+  });
+
+  const container = document.getElementById('queue-cards');
+  const empty = document.getElementById('queue-empty');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '';
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    container.innerHTML = filtered.map(a => {
+      const statusLabel = { WAITING: 'รอสัมภาษณ์', CALLED: 'กำลังสัมภาษณ์', DONE: 'สัมภาษณ์แล้ว', SKIPPED: 'ข้าม' }[a.status] || a.status;
+      const isOnline = a.mode === 'online';
+      const canCall = a.status === 'WAITING';
+      const isCalled = a.status === 'CALLED';
+
+      return `<div class="queue-card bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center gap-4 ${isCalled ? 'ring-2 ring-blue-400 bg-blue-50/30' : ''}">
+        <!-- Queue number -->
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
+          ${a.status === 'DONE' ? 'bg-green-100 text-green-700' :
+            a.status === 'CALLED' ? 'bg-blue-100 text-blue-700 status-pulse' :
+            a.status === 'SKIPPED' ? 'bg-red-100 text-red-500' :
+            'bg-gray-100 text-gray-500'}">
+          ${a.status === 'DONE' ? '✓' : a.status === 'CALLED' ? '🎤' : a.status === 'SKIPPED' ? '—' : '#' + (filtered.indexOf(a) + 1)}
+        </div>
+
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <p class="font-semibold truncate">${a.name}</p>
+            <!-- Online / Onsite Badge -->
+            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${isOnline ? 'badge-online' : 'badge-onsite'}">
+              <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-blue-500' : 'bg-amber-500'}"></span>
+              ${isOnline ? 'Online' : 'On-site'}
+            </span>
+            <!-- Status Badge -->
+            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold
+              ${a.status === 'DONE' ? 'badge-done' :
+                a.status === 'CALLED' ? 'badge-interviewing' :
+                a.status === 'SKIPPED' ? 'badge-skipped' :
+                'badge-waiting'}">${statusLabel}</span>
+          </div>
+          <p class="text-xs text-gray-500 mt-0.5">${a.program} · ถึงคิวเมื่อ ${a.arrivedAt || '—'} น.
+            ${a.mode === 'online' ? '· 🔗 ' + (a.link || 'ไม่มีลิงก์') : '· 📍 ' + (a.place || 'ไม่ระบุสถานที่')}
+          </p>
+          ${a.status === 'DONE' ? `<p class="text-xs mt-0.5 ${a.decision === 'PASS' ? 'text-green-600' : 'text-red-600'}">${a.decision === 'PASS' ? '✅ ผ่าน' : '❌ ไม่ผ่าน'} (${a.score} คะแนน)${a.comment ? ' — ' + a.comment : ''}</p>` : ''}
+        </div>
+
+        <!-- Actions -->
+        <div class="shrink-0">
+          ${canCall
+            ? `<button onclick="callApplicant(${a.id})" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg px-3 py-1.5">เรียกสัมภาษณ์</button>`
+            : a.status === 'DONE'
+              ? `<span class="text-xs text-green-600">เสร็จสิ้น ✓</span>`
+              : a.status === 'CALLED'
+                ? `<span class="text-xs text-blue-600">กำลังสัมภาษณ์...</span>`
+                : `<span class="text-xs text-gray-400">ข้ามแล้ว</span>`}
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function init() { render(); notifyParentPage('queue'); }
+</script>
+</body>
+</html>

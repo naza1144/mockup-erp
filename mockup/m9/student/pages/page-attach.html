@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 นักศึกษา · แนบเอกสาร Milestone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ AttachDoc — UC-12 ═══ -->
+<div>
+  <a href="page-milestone.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับ</a>
+  <h1 class="text-2xl font-bold mb-4">แนบเอกสาร Milestone</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-md space-y-4">
+    <p class="text-sm">Milestone: <span id="at-name" class="font-semibold"></span></p>
+    <div><label class="text-sm font-semibold text-gray-700">ประเภทเอกสาร (doc_type)</label>
+      <select id="at-doc-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <option value="PROPOSAL">PROPOSAL — เค้าโครงวิทยานิพนธ์</option>
+        <option value="FULL_THESIS">FULL_THESIS — วิทยานิพนธ์ฉบับสมบูรณ์</option>
+        <option value="TURNITIN">TURNITIN — รายงาน Turnitin</option>
+        <option value="ETHICS">ETHICS — เอกสารจริยธรรม</option>
+        <option value="REVISION">REVISION — เอกสารแก้ไข</option>
+        <option value="OTHER">OTHER — อื่นๆ</option>
+      </select>
+    </div>
+    <input type="file" id="at-file" accept=".pdf,.doc,.docx" onchange="pickMilestoneFile()" class="text-sm">
+    <p class="text-xs text-gray-500">รองรับ .pdf/.doc/.docx ขนาดไม่เกิน 10MB · version เพิ่มอัตโนมัติ (DD-M9-005)</p>
+    <p id="at-error" class="text-xs text-red-600 hidden"></p>
+    <button onclick="uploadMilestoneFile()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">อัปโหลด</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let thesis = loadData("m9_st_thesis", null);
+const attachTarget = new URLSearchParams(location.search).get("m");
+let pickedMsFile = null;
+
+function pickMilestoneFile() {
+  const input = document.getElementById("at-file");
+  const err = document.getElementById("at-error");
+  const file = input.files[0];
+  if (!file) return;
+  const okType = [".pdf", ".doc", ".docx"].some((ext) => file.name.toLowerCase().endsWith(ext));
+  if (!okType || file.size > 10 * 1024 * 1024) {
+    pickedMsFile = null; err.textContent = !okType ? "ไฟล์ต้องเป็น .pdf/.doc/.docx" : "ไฟล์ใหญ่เกิน 10MB";
+    err.classList.remove("hidden"); input.value = ""; return;
+  }
+  err.classList.add("hidden"); pickedMsFile = file.name;
+}
+function uploadMilestoneFile() {
+  const err = document.getElementById("at-error");
+  if (!pickedMsFile) { err.textContent = "เลือกไฟล์ก่อนอัปโหลด"; err.classList.remove("hidden"); return; }
+  const docType = document.getElementById("at-doc-type").value;
+  const m = thesis.milestones.find((x) => x.name === attachTarget);
+  m.file = pickedMsFile; m.status = "PENDING_REVIEW"; m.docType = docType; m.version = (m.version || 0) + 1;
+  /* thesis_document: INSERT with doc_type, version, file_url (MinIO:thesis-files) */
+  thesis.documents.push({ doc_type: docType, version: m.version, original_filename: pickedMsFile, uploaded_by: "นักศึกษา", uploaded_at: new Date().toISOString() });
+  saveData("m9_st_thesis", thesis); pickedMsFile = null;
+  alert("อัปโหลดเอกสารแล้ว — รอที่ปรึกษาตรวจ (จำลอง audit log ผ่าน M10)");
+  window.location.href = "page-milestone.html";
+}
+
+function init() {
+  document.getElementById("at-name").textContent = attachTarget || "-";
+  notifyParentPage("attach");
+}
+</script>
+</body>
+</html>

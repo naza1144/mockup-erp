@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M8 อาจารย์/ผจก.รายวิชา · ฐานข้อมูลบริษัท</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ 2. CompanyDB — UC-01 ═══ -->
+<div>
+  <h1 class="text-2xl font-bold mb-4">ฐานข้อมูลบริษัท</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-4">
+    <table class="w-full text-sm"><thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500"><tr><th class="text-left px-4 py-3">ชื่อบริษัท</th><th class="text-left px-4 py-3">ที่ตั้ง</th><th class="text-left px-4 py-3">ประเภท</th><th class="px-4 py-3"></th></tr></thead><tbody id="company-rows"></tbody></table>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 max-w-3xl space-y-2">
+    <p class="text-sm font-semibold">เพิ่มบริษัทใหม่</p>
+    <div class="grid grid-cols-3 gap-2">
+      <input id="cp-name" placeholder="ชื่อบริษัท" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+      <input id="cp-address" placeholder="ที่ตั้ง" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+      <select id="cp-type" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"><option value="IT">IT</option><option value="Manufacturing">Manufacturing</option><option value="Service">Service</option></select>
+    </div>
+    <div class="grid grid-cols-3 gap-2">
+      <input id="cp-contact" placeholder="ผู้ประสานงาน" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+      <input id="cp-phone" placeholder="เบอร์ติดต่อ" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+      <input id="cp-email" placeholder="Email" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+    </div>
+    <p id="cp-error" class="text-xs text-amber-600 hidden"></p>
+    <button onclick="addCompany()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm rounded-lg px-3 py-1.5">เพิ่มบริษัท</button>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let companies = loadData("m8_tc_companies", seedCompanies);
+
+/* ═══ UC-01 — ฐานข้อมูลบริษัท (dedup check) ═══ */
+function addCompany() {
+  const name = document.getElementById("cp-name").value.trim();
+  const err = document.getElementById("cp-error");
+  if (!name) { err.textContent = "กรอกชื่อบริษัท"; err.classList.remove("hidden"); return; }
+  const dup = companies.find((c) => c.name === name);
+  if (dup) { err.textContent = `พบข้อมูลบริษัทนี้ในระบบแล้ว (${dup.name}) — ใช้ข้อมูลเดิมแทนการเพิ่มใหม่`; err.classList.remove("hidden"); return; }
+  err.classList.add("hidden");
+  companies.push({ id: Date.now(), name, address: document.getElementById("cp-address").value, type: document.getElementById("cp-type").value,
+    contact: document.getElementById("cp-contact").value, phone: document.getElementById("cp-phone").value, email: document.getElementById("cp-email").value,
+    rating: 0, history: [], notes: "", account: null });
+  saveData("m8_tc_companies", companies);
+  document.getElementById("cp-name").value = ""; render();
+}
+function openCompanyAccount(id) { window.location.href = "page-company-account.html?company=" + id; }
+function openCompanyKb(id) { window.location.href = "page-company-kb.html?company=" + id; }
+
+function render() {
+  document.getElementById("company-rows").innerHTML = companies.map((c) => `
+    <tr class="border-t border-gray-100 hover:bg-gray-50"><td class="px-4 py-3">${c.name}</td><td class="px-4 py-3 text-gray-500">${c.address}</td><td class="px-4 py-3 text-gray-500">${c.type}</td>
+      <td class="px-4 py-3 text-right space-x-1"><button onclick="openCompanyAccount(${c.id})" class="text-amber-700 hover:bg-amber-50 rounded-lg px-2 py-1 text-xs">จัดการบัญชี</button>
+        <button onclick="openCompanyKb(${c.id})" class="text-amber-700 hover:bg-amber-50 rounded-lg px-2 py-1 text-xs">Knowledge Base</button></td></tr>`).join("");
+}
+
+function init() {
+  if (!enforceRole(["manager"])) return;
+  render();
+  notifyParentPage("company-db");
+}
+</script>
+</body>
+</html>

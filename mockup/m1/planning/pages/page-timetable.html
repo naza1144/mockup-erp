@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M1 Planning · ตารางเรียน-สอน (Timetable)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+    .overflow-x-auto::-webkit-scrollbar { height: 8px; }
+    .overflow-x-auto::-webkit-scrollbar-track { background: #f1f1f1; }
+    .overflow-x-auto::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .overflow-x-auto::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+  <h1 class="text-2xl font-bold text-gray-800">ตารางเรียน-สอน (Timetable)</h1>
+  <div class="flex flex-wrap items-center gap-3">
+    <select id="tt-term" onchange="renderTimetable()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold bg-teal-50 text-teal-800 focus:border-teal-500 outline-none cursor-pointer">
+      <option value="2569/1">2569/1 (มิ.ย.–ต.ค. 2569)</option>
+    </select>
+    <div class="flex gap-2">
+      <button onclick="alert('Export ตารางเป็น PDF (จำลอง)')" class="text-sm text-gray-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg px-3 py-2 border border-gray-200 transition-colors">PDF</button>
+      <button onclick="alert('Export ตารางเป็น iCal .ics (จำลอง)')" class="text-sm text-gray-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg px-3 py-2 border border-gray-200 transition-colors">iCal</button>
+    </div>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+  <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+    <h3 class="text-sm font-bold text-gray-700">รายการวิชาที่เปิดสอน (Published)</h3>
+  </div>
+  <div class="overflow-x-auto">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200">
+            <th class="text-left px-4 py-3">รหัสวิชา</th>
+            <th class="text-left px-4 py-3">กลุ่ม</th>
+            <th class="text-left px-4 py-3">ชื่อวิชา</th>
+            <th class="text-left px-4 py-3">หน่วยกิต</th>
+            <th class="text-left px-4 py-3">ผู้สอน</th>
+            <th class="text-left px-4 py-3">วันเวลาเรียน-ห้อง</th>
+            <th class="text-left px-4 py-3">ช่องทาง</th>
+          </tr>
+        </thead>
+        <tbody id="cs-rows"></tbody>
+      </table>
+    </div>
+</div>
+
+<div class="flex flex-wrap gap-3 mb-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+  <span class="text-sm text-gray-500 py-1.5">กรองข้อมูล:</span>
+  <select id="tt-filter-instructor" onchange="renderTimetable()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:border-teal-500 outline-none bg-white"><option value="">ทุกอาจารย์</option></select>
+  <select id="tt-filter-room" onchange="renderTimetable()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:border-teal-500 outline-none bg-white"><option value="">ทุกห้อง</option></select>
+</div>
+
+<div id="tt-grid" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto"></div>
+
+<script src="../shared.js"></script>
+<script>
+let rooms = loadData("m1p_rooms", seedRooms);
+let timeslots = loadData("m1p_timeslots", seedTimeslots);
+let sections = loadData("m1p_sections", seedSections);
+
+function renderTimetableList() {
+  const fInstr = document.getElementById("tt-filter-instructor")?.value;
+  const fRoom = document.getElementById("tt-filter-room")?.value;
+  const published = sections.filter((s) => s.status === "PUBLISHED" &&
+    (!fInstr || getInstructorIds(s).includes(Number(fInstr))) &&
+    (!fRoom || s.roomId == fRoom));
+
+  const rows = published.map((s) => {
+    const c = mockCourses.find((x) => x.code === s.courseCode);
+    const instrIds = getInstructorIds(s);
+    const instrNames = instrIds.map(id => mockInstructors.find(i => i.id === id)?.name).filter(Boolean);
+    const instrStr = instrNames.join(", ");
+    const r = rooms.find((x) => x.id === s.roomId);
+    const ts = timeslots.find((x) => x.id === s.timeslotId);
+    const dayMap = { "จันทร์": "Mon", "อังคาร": "Tue", "พุธ": "Wed", "พฤหัสบดี": "Thu", "ศุกร์": "Fri" };
+    const timeStr = ts ? `${dayMap[ts.day] ?? ts.day} ${ts.start}-${ts.end}` : "-";
+    const roomStr = r ? r.code : "-";
+    const modeMap = { ONSITE: "Onsite", ONLINE: "Online", HYBRID: "Hybrid" };
+    return `<tr class="border-t border-gray-100 hover:bg-gray-50">
+      <td class="px-4 py-3 font-mono text-teal-700 font-semibold">${s.courseCode}</td>
+      <td class="px-4 py-3">Sec ${s.sec}</td>
+      <td class="px-4 py-3 font-medium text-gray-800">${c?.name ?? "-"}</td>
+      <td class="px-4 py-3 text-gray-500">${c?.credit ?? "-"}</td>
+      <td class="px-4 py-3 text-gray-600 text-xs">${instrStr}</td>
+      <td class="px-4 py-3 text-xs">${timeStr} <br> <span class="text-gray-400">${roomStr}</span></td>
+      <td class="px-4 py-3"><span class="inline-block px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 border border-gray-200">${modeMap[s.mode] ?? s.mode}</span></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("cs-rows").innerHTML = rows || `<tr><td colspan="7" class="text-center text-gray-400 py-10 text-sm">ไม่มีตารางเรียนที่เผยแพร่แล้ว</td></tr>`;
+}
+
+function renderTimetable() {
+  const fInstr = document.getElementById("tt-filter-instructor")?.value;
+  const fRoom = document.getElementById("tt-filter-room")?.value;
+  const published = sections.filter((s) => s.status === "PUBLISHED" &&
+    (!fInstr || getInstructorIds(s).includes(Number(fInstr))) &&
+    (!fRoom || s.roomId == fRoom));
+
+  if (!published.length) {
+    document.getElementById("tt-grid").innerHTML = `<div class="p-10 text-center"><p class="text-gray-400 mb-2">ไม่มีตารางเรียนที่เผยแพร่แล้ว</p><a href="page-section-create.html" class="text-teal-600 text-sm hover:underline">ไปสร้างกลุ่มเรียน</a></div>`;
+    return;
+  }
+
+  const roomCode = (id) => { const r = rooms.find((x) => x.id === id); return r ? r.code : ""; };
+  const getCourseName = (code) => mockCourses.find(c => c.code === code)?.name || code;
+
+  document.getElementById("tt-grid").innerHTML = `<table class="w-full text-sm border-collapse min-w-[800px]">
+      <thead>
+        <tr class="bg-gray-800 text-white">
+          <th class="px-3 py-3 text-xs font-bold w-20 border-r border-gray-700 sticky left-0 z-10 bg-gray-800">วัน</th>
+          ${ALL_TIMES.map((t) => `<th class="px-3 py-3 text-xs font-bold border-l border-gray-700 w-24">${t}</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${DAY_ORDER.map((day) => {
+          let cells = "";
+          ALL_TIMES.forEach((timeCol) => {
+             const matchSlot = timeslots.find(ts => ts.day === day && ts.start === timeCol);
+             if(matchSlot) {
+                 const item = published.find(s => s.timeslotId === matchSlot.id);
+                 if(item) {
+                     const startH = parseInt(matchSlot.start.split(':')[0]);
+                     const endH = parseInt(matchSlot.end.split(':')[0]);
+                     const duration = endH - startH;
+                     const colspan = duration > 0 ? duration : 1;
+                     const instrIds = getInstructorIds(item);
+                     const instrNames = instrIds.map(id => mockInstructors.find(i => i.id === id)?.name).filter(Boolean);
+                     const instrShort = instrNames.length > 2
+                       ? instrNames.slice(0, 2).join(", ") + ` +${instrNames.length - 2}`
+                       : instrNames.join(", ");
+
+                     cells += `<td colspan="${colspan}" class="align-top px-1 py-1 border-l border-gray-200 relative group">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 rounded-r px-2 py-2 h-full shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                          <p class="font-bold text-blue-800 text-xs mb-0.5">${item.courseCode} <span class="font-normal opacity-75">Sec${item.sec}</span></p>
+                          <p class="text-[10px] text-gray-600 leading-tight mb-1 line-clamp-2">${getCourseName(item.courseCode)}</p>
+                          <p class="text-[10px] text-purple-700 mb-1" title="${instrNames.join(', ')}">👤 ${instrShort}</p>
+                          <p class="text-[10px] text-gray-400 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            ${roomCode(item.roomId)}
+                          </p>
+                        </div>
+                    </td>`;
+                 } else {
+                     cells += `<td class="px-1 py-1 border-l border-gray-100 text-center text-gray-100 text-xs select-none">-</td>`;
+                 }
+             } else {
+                 cells += `<td class="px-1 py-1 border-l border-gray-100 bg-gray-50/30"></td>`;
+             }
+          });
+
+          return `<tr class="border-t border-gray-200 hover:bg-gray-50/50">
+            <td class="bg-gray-100 text-gray-700 text-center font-bold px-3 py-3 whitespace-nowrap border-r border-gray-200 sticky left-0 z-10">${day}</td>
+            ${cells}
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`;
+}
+
+function init() {
+  document.getElementById("tt-filter-instructor").innerHTML = `<option value="">ทุกอาจารย์</option>` + mockInstructors.map((i) => `<option value="${i.id}">${i.name}</option>`).join("");
+  document.getElementById("tt-filter-room").innerHTML = `<option value="">ทุกห้อง</option>` + rooms.map((r) => `<option value="${r.id}">${r.code}</option>`).join("");
+  renderTimetableList();
+  renderTimetable();
+  notifyParentPage("timetable");
+}
+</script>
+</body>
+</html>

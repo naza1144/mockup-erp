@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M0 Admin Console · กำหนดสิทธิ์ละเอียด</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<!-- ═══ FINE_PERM — UC-10 ═══ -->
+<div class="max-w-4xl">
+  <a href="page-list.html" class="text-sm text-gray-500 hover:text-gray-700 mb-3 inline-block">← กลับรายการบัญชีผู้ใช้</a>
+  <h1 class="text-2xl font-bold mb-4">กำหนดสิทธิ์ละเอียด (Fine-grained Permission)</h1>
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-4">
+    <p class="text-sm">บัญชี: <span id="fp-name" class="font-semibold"></span></p>
+    <div id="fp-chips" class="flex flex-wrap gap-2"></div>
+    <div class="flex gap-2">
+      <input id="fp-scope" placeholder="เช่น curriculum:write (resource:action)" class="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1">
+      <button onclick="addScope()" class="bg-slate-600 hover:bg-slate-700 text-white text-sm rounded-lg px-3">เพิ่ม</button>
+    </div>
+    <p id="fp-error" class="text-xs text-red-600 hidden"></p>
+    <p class="text-xs text-gray-400">scope ต้องเป็นรูปแบบ <span class="font-mono">resource:action</span> เช่น <span class="font-mono">curriculum:write, grade:approve, finance:read</span></p>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let accounts = loadData("m0_admin_accounts", seedAccounts);
+const id = new URLSearchParams(location.search).get("id");
+const target = accounts.find((a) => a.account_id === id);
+
+/* ═══ UC-10 — fine-grained permission · ตรวจสอบรูปแบบ resource:action ด้วย regex (DD-M0-002) ═══ */
+function addScope() {
+  const scope = document.getElementById("fp-scope").value.trim();
+  const err = document.getElementById("fp-error");
+  if (!SCOPE_REGEX.test(scope)) {
+    err.textContent = `scope "${scope}" ไม่ถูกต้อง — ต้องเป็นรูปแบบ resource:action เช่น curriculum:write, grade:approve`;
+    err.classList.remove("hidden"); return;
+  }
+  err.classList.add("hidden");
+  if (!target.permissions.some((p) => p.scope === scope)) {
+    const permId = crypto.randomUUID ? crypto.randomUUID() : "perm-" + Date.now();
+    target.permissions.push({ id: permId, scope, granted_by: ADMIN_ID, granted_at: new Date().toISOString() });
+    target.updated_at = new Date().toISOString();
+    saveData("m0_admin_accounts", accounts);
+  }
+  document.getElementById("fp-scope").value = ""; render();
+}
+function removeScope(scope) {
+  target.permissions = target.permissions.filter((p) => p.scope !== scope);
+  target.updated_at = new Date().toISOString();
+  saveData("m0_admin_accounts", accounts); render();
+}
+
+function render() {
+  document.getElementById("fp-name").textContent = fullNameTH(target);
+  document.getElementById("fp-chips").innerHTML = target.permissions.map((p) => `
+    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700" title="ID: ${p.id} · โดย admin · ${new Date(p.granted_at).toLocaleDateString("th-TH")}">
+      ${p.scope} <button onclick="removeScope('${p.scope}')" class="hover:text-red-600" title="ลบสิทธิ์ ${p.scope}" aria-label="ลบสิทธิ์ ${p.scope}">✕</button>
+    </span>`).join("") || `<span class="text-xs text-gray-400">ยังไม่มี permission flag เพิ่มเติม</span>`;
+}
+
+function init() {
+  render();
+  notifyParentPage("permission");
+}
+</script>
+</body>
+</html>

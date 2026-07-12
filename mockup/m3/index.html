@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M3 · ข้อมูลอาจารย์ — Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } html, body { height: 100%; margin: 0; } iframe { border: 0; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<div class="flex flex-col h-screen">
+  <header class="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10 shrink-0">
+    <div class="flex items-center gap-3">
+      <a href="../main%20page/index.html" class="text-sm text-gray-500 hover:text-gray-700">← กลับหน้าหลัก</a>
+      <span class="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-xs">M3</span>
+      <span class="font-semibold text-sm">ERP บริหารหลักสูตร · ข้อมูลอาจารย์</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-xs text-gray-500">บทบาท (จำลอง):</label>
+      <select onchange="setRole(this.value)" id="roleSwitch" class="border border-gray-300 rounded-lg px-2 py-1 text-sm">
+        <option value="hr">ฝ่ายบุคคล (HR/Admin)</option>
+        <option value="faculty">อาจารย์ (Faculty)</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="flex flex-1 min-h-0">
+    <nav class="w-56 bg-white border-r border-gray-200 p-3 shrink-0 space-y-0.5 overflow-y-auto">
+      <p class="px-2 py-1 text-[11px] uppercase tracking-wide text-gray-400">เมนู</p>
+      <a data-page="list" data-roles="hr" href="pages/page-list.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">รายการอาจารย์</a>
+      <a data-page="profile" data-roles="faculty" href="pages/page-profile.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">โปรไฟล์ของฉัน</a>
+    </nav>
+
+    <iframe id="main-frame" name="main-frame" src="pages/page-list.html" class="flex-1 w-full h-full"></iframe>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+function setActiveMenu(pageKey) {
+  document.querySelectorAll(".menu-link").forEach((el) => {
+    const on = el.dataset.page === pageKey;
+    el.classList.toggle("bg-orange-50", on); el.classList.toggle("text-orange-700", on); el.classList.toggle("font-semibold", on);
+  });
+}
+window.addEventListener("message", (ev) => {
+  if (ev.data && ev.data.type === "m3-page") setActiveMenu(ev.data.page);
+});
+
+function setRole(role) {
+  localStorage.setItem("current_role", role);
+  document.getElementById("roleSwitch").value = role;
+  document.querySelectorAll("[data-roles]").forEach((el) => el.classList.toggle("hidden", !el.dataset.roles.split(",").includes(role)));
+  const entry = { hr: "page-list.html", faculty: "page-profile.html" };
+  document.getElementById("main-frame").src = "pages/" + entry[role];
+}
+
+setRole(localStorage.getItem("current_role") ?? "hr");
+</script>
+</body>
+</html>
