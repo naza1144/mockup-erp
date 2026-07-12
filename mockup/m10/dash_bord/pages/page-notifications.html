@@ -1,27 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!--
-    ═══════════════════════════════════════════════════════
-    M10 · Notification Service (E4)
-
-    Flow:
-    1. โหลด → User Preference (8 event types)
-       └─ แสดง checkbox เปิด/ปิด Email + In-app ต่อ event
-       └─ [แก้ไข] → [บันทึก] → saveData → alert
-    2. Delivery Log — 5 รายการส่งล่าสุด
-       └─ เวลา · event · title · channel · สถานะ (sent/failed/dead)
-
-    Notification Flow (Event-driven):
-    Service → NATS → M10 Notification → ตรวจสอบ Preference
-      ├─ email=true → ส่ง Email (SMTP)
-      └─ in_app=true → ส่ง In-app (WebSocket)
-      ↓
-    บันทึก Delivery Log
-
-    Epic: E4 · Notification — UC-09 (Email), UC-10 (In-app), UC-11 (Preference), UC-12 (Event-driven)
-    ═══════════════════════════════════════════════════════
-  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Notifications</title>
@@ -31,14 +10,17 @@
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
   <h1 class="text-2xl font-bold mb-1">Notification Service (E4)</h1>
-  <p class="text-xs text-blue-600 mb-4">UC-09 (Email) · UC-10 (In-app) · UC-11 (User Preference) · UC-12 (Event-driven) — ส่งแจ้งเตือนอัตโนมัติเมื่อมี event เกิดขึ้น พร้อม retry + log</p>
+  <p class="text-xs text-blue-600 mb-4">UC-09 (Email) · UC-12 (Event-driven) — ส่งแจ้งเตือนอัตโนมัติเมื่อมี event เกิดขึ้น พร้อม retry + log</p>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-      <h2 class="text-sm font-semibold mb-3">User Preference</h2>
-      <p class="text-xs text-gray-500 mb-2">เปิด/ปิดช่องทางการแจ้งเตือนต่อประเภท</p>
-      <div id="pref-list" class="text-xs space-y-2"></div>
-      <button onclick="savePrefs()" class="mt-2 bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-xl px-4 py-2">💾 บันทึก</button>
+      <h2 class="text-sm font-semibold mb-3">ส่ง Email ทดสอบ</h2>
+      <p class="text-xs text-gray-500 mb-2">ทดสอบส่ง email ผ่าน Notification Service</p>
+      <div class="space-y-2">
+        <input id="test-email" type="email" placeholder="อีเมลผู้รับ" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+        <input id="test-msg" placeholder="ข้อความ" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+        <button onclick="sendTest()" class="bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-xl px-4 py-2">📧 ส่งทดสอบ</button>
+      </div>
     </div>
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
       <h2 class="text-sm font-semibold mb-3">Delivery Log</h2>
@@ -51,16 +33,6 @@
   <script>
     function init() {
       notifyParentPage("notifications");
-
-      const prefs = loadData("notif_prefs", SEED_NOTIF_PREFS);
-      document.getElementById("pref-list").innerHTML = prefs.map((p, i) =>
-        `<div class="flex items-center justify-between border-b border-gray-100 pb-1">
-          <span class="flex-1">${p.desc}</span>
-          <label class="text-xs mr-2">📧 <input type="checkbox" data-idx="${i}" data-ch="email" ${p.email ? 'checked' : ''}></label>
-          <label class="text-xs">💬 <input type="checkbox" data-idx="${i}" data-ch="in_app" ${p.in_app ? 'checked' : ''}></label>
-        </div>`
-      ).join("");
-
       const deliveries = loadData("deliveries", SEED_DELIVERIES);
       document.getElementById("delivery-list").innerHTML = deliveries.map(d =>
         `<div class="flex justify-between border-b border-gray-100 pb-1">
@@ -73,15 +45,11 @@
       ).join("");
     }
 
-    function savePrefs() {
-      const prefs = loadData("notif_prefs", SEED_NOTIF_PREFS);
-      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        const idx = parseInt(cb.dataset.idx);
-        const ch = cb.dataset.ch;
-        if (prefs[idx]) prefs[idx][ch] = cb.checked;
-      });
-      saveData("notif_prefs", prefs);
-      alert('✅ บันทึก Preference แล้ว');
+    function sendTest() {
+      const email = document.getElementById("test-email").value;
+      const msg = document.getElementById("test-msg").value;
+      if (!email || !msg) { alert("กรุณากรอกอีเมลและข้อความ"); return; }
+      alert(`✅ ส่ง email ทดสอบไปยัง ${email} แล้ว (จำลอง)`);
     }
     init();
   </script>

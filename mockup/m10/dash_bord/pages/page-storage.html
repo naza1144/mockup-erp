@@ -1,21 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!--
-    ═══════════════════════════════════════════════════════
-    M10 · File Storage — MinIO (E3)
-
-    Flow:
-    1. โหลด → Buckets ต่อ Domain (5 buckets)
-       └─ account-avatars, curriculum-docs, student-files, thesis-files, coop-reports
-    2. Presigned URL Generator (UC-07)
-       └─ [เลือก bucket] → [Generate] → ได้ URL สำหรับ upload ตรงถึง MinIO
-    3. Lifecycle Policy (UC-08)
-       └─ กำหนดอายุไฟล์ → DELETE หรือ Archive to Glacier
-
-    Epic: E3 · File Storage — UC-06 (Buckets), UC-07 (Presigned URL), UC-08 (Lifecycle)
-    ═══════════════════════════════════════════════════════
-  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Storage</title>
@@ -25,7 +10,7 @@
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
   <h1 class="text-2xl font-bold mb-1">File Storage — MinIO (E3)</h1>
-  <p class="text-xs text-blue-600 mb-4">UC-06 (Deploy MinIO & Buckets) · UC-07 (Presigned URL) · UC-08 (Lifecycle Policy) — S3-compatible object storage แยก bucket ต่อ domain</p>
+  <p class="text-xs text-blue-600 mb-4">UC-06 (Deploy MinIO & Buckets) · UC-07 (Presigned URL) — S3-compatible object storage แยก bucket ต่อ domain</p>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
@@ -41,27 +26,14 @@
           <option>account-avatars</option><option>curriculum-docs</option>
           <option>student-files</option><option>thesis-files</option><option>coop-reports</option>
         </select>
-        <button onclick="genUrl()" class="bg-slate-600 hover:bg-slate-700 text-white text-sm rounded-xl px-4 py-2">🔗 Generate</button>
+        <button onclick="genUrl()" class="bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-xl px-4 py-2">🔗 Generate</button>
         <div id="ps-result" class="hidden mt-2 bg-gray-50 rounded-lg p-2 text-xs font-mono break-all"></div>
       </div>
     </div>
   </div>
 
-  <!-- UC-08: Lifecycle Policy -->
-  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-    <h2 class="text-sm font-semibold mb-3">Lifecycle Policy (UC-08)</h2>
-    <p class="text-xs text-gray-500 mb-3">กำหนด lifecycle rule ต่อ bucket — archive ไฟล์เก่า, ลบไฟล์ชั่วคราว</p>
-    <div id="lifecycle-list" class="text-xs space-y-2"></div>
-  </div>
-
   <script src="../shared.js"></script>
   <script>
-    const SEED_LIFECYCLE = [
-      { bucket: "student-files", rule: "Delete temporary uploads", condition: "age > 30 days", action: "DELETE" },
-      { bucket: "curriculum-docs", rule: "Archive old TQF docs", condition: "age > 2 years", action: "Archive to Glacier" },
-      { bucket: "coop-reports", rule: "Archive after completion", condition: "age > 5 years", action: "Archive to Glacier" },
-    ];
-
     function init() {
       notifyParentPage("storage");
       const buckets = loadData("buckets", SEED_BUCKETS);
@@ -70,16 +42,6 @@
           <span class="font-mono font-semibold">${b.name}</span>
           <span class="text-gray-400">${b.module}</span>
           <span class="text-gray-500">${b.objects} objects · ${b.size}</span>
-        </div>`
-      ).join("");
-
-      const lifecycle = loadData("lifecycle", SEED_LIFECYCLE);
-      document.getElementById("lifecycle-list").innerHTML = lifecycle.map(l =>
-        `<div class="flex items-center justify-between border-b border-gray-100 pb-1.5">
-          <span class="font-mono font-semibold">${l.bucket}</span>
-          <span class="text-gray-500">${l.rule}</span>
-          <span class="text-gray-400">${l.condition}</span>
-          <span class="font-mono text-xs">${l.action}</span>
         </div>`
       ).join("");
     }

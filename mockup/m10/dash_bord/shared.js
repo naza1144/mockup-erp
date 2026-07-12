@@ -63,17 +63,6 @@ const SEED_BUCKETS = [
 ];
 
 // E4: Notification
-const SEED_NOTIF_PREFS = [
-  { event_type: "defense.scheduled",        email: true,  in_app: true,  desc: "M9 · แจ้งสอบ" },
-  { event_type: "thesis.topic_approved",    email: true,  in_app: true,  desc: "M9 · อนุมัติหัวข้อ" },
-  { event_type: "coop.evaluation_submitted", email: true,  in_app: true,  desc: "M8 · ผลประเมินสหกิจ" },
-  { event_type: "coop.documents_published",  email: false, in_app: true,  desc: "M8 · เอกสารใหม่" },
-  { event_type: "student.interview_scheduled", email: true, in_app: true, desc: "M4 · นัดสัมภาษณ์" },
-  { event_type: "student.interview_result", email: true,  in_app: true,  desc: "M4 · ผลสัมภาษณ์" },
-  { event_type: "schedule.published",       email: false, in_app: true,  desc: "M1 · ตารางเรียน" },
-  { event_type: "account.role_changed",     email: true,  in_app: true,  desc: "M0 · เปลี่ยนสิทธิ์" },
-];
-
 const SEED_DELIVERIES = [
   { id: "n1", created_at: "2569-07-08 16:30", event: "thesis.topic_approved",  title: "อนุมัติหัวข้อโครงงาน",  channel: "email", status: "sent" },
   { id: "n2", created_at: "2569-07-08 16:25", event: "coop.evaluation_submitted", title: "ผลประเมินสหกิจ",    channel: "email", status: "sent" },

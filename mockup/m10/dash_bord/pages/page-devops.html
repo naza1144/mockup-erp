@@ -1,24 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!--
-    ═══════════════════════════════════════════════════════
-    M10 · DevOps & CI/CD (E6)
-
-    Flow:
-    1. โหลด → สถานะ Tools (Docker+Helm / K8s / Secret Management)
-    2. CI/CD Pipeline Status — 7 services
-       └─ service · lastBuild · status (success/failed/running) · version · env
-    3. Observability — Loki (Log) / Prometheus (Metrics) / Grafana (Dashboard)
-    4. Terraform (IaC)
-       └─ State Backend: MinIO · Providers · Modules · Env Workspaces · Resources: 47
-
-    CI/CD Flow:
-    Push → GitHub Actions → Build Docker → Push Registry → Helm Deploy → Health Check → Notify
-
-    Epic: E6 · DevOps — UC-15 (Docker+Helm), UC-16 (K8s), UC-17 (CI/CD), UC-18 (Observability), UC-19 (Secret)
-    ═══════════════════════════════════════════════════════
-  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · DevOps</title>
@@ -28,7 +10,7 @@
 </head>
 <body class="bg-gray-50 text-gray-800 p-6">
   <h1 class="text-2xl font-bold mb-1">DevOps & CI/CD (E6)</h1>
-  <p class="text-xs text-blue-600 mb-4">UC-15 (Docker + Helm) · UC-16 (K8s Deploy) · UC-17 (CI/CD Pipeline) · UC-18 (Observability) · UC-19 (Secret Management) + Terraform (IaC) — Pipeline และ Infrastructure Management</p>
+  <p class="text-xs text-blue-600 mb-4">UC-15 (Docker + Helm) · UC-16 (K8s Deploy) · UC-17 (CI/CD Pipeline) · UC-19 (Secret Management) — Pipeline และ Infrastructure Management</p>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
@@ -50,32 +32,13 @@
     </div>
   </div>
 
-  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
     <h2 class="text-sm font-semibold mb-3">CI/CD Pipeline Status</h2>
     <div id="pipeline-list" class="text-xs space-y-1"></div>
   </div>
 
-  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-    <h2 class="text-sm font-semibold mb-3">Observability</h2>
-    <div class="text-xs space-y-1 text-gray-600">
-      <div class="flex justify-between"><span>Loki (Log)</span><span>🟢 retention 30d</span></div>
-      <div class="flex justify-between"><span>Prometheus (Metrics)</span><span>🟢 retention 90d</span></div>
-      <div class="flex justify-between"><span>Grafana (Dashboard)</span><span>🟢 Active</span></div>
-    </div>
-  </div>
-
-  <!-- Terraform (IaC) -->
-  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mt-5">
-    <h2 class="text-sm font-semibold mb-3">Terraform (Infrastructure as Code)</h2>
-    <p class="text-xs text-gray-500 mb-3">จัดการ infrastructure ทั้งหมดผ่าน Terraform — version 1.9</p>
-    <div class="text-xs space-y-2 text-gray-600">
-      <div class="flex justify-between"><span>State Backend</span><span class="font-mono text-gray-500">MinIO (s3://erp-terraform-state/)</span></div>
-      <div class="flex justify-between"><span>Providers</span><span>kubectl, helm, keycloak, minio, random</span></div>
-      <div class="flex justify-between"><span>Modules</span><span>network, k8s, database, storage, monitoring, iam</span></div>
-      <div class="flex justify-between"><span>Env Workspaces</span><span>dev · staging · prod</span></div>
-      <div class="flex justify-between"><span>Resources Managed</span><span class="text-blue-600 font-semibold">47</span></div>
-      <div class="flex justify-between"><span>Last Plan</span><span class="text-green-600">✅ Clean (no drift)</span></div>
-    </div>
+  <div class="mt-4 text-xs text-gray-400 italic">
+    ⏳ Observability (Loki + Prometheus + Grafana) — 🔜 dev in next version (P5)
   </div>
 
   <script src="../shared.js"></script>
