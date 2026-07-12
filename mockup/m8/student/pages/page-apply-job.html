@@ -40,7 +40,6 @@
       <div><label class="text-sm font-semibold text-gray-700">ตำแหน่ง</label><input id="aj-position" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
       <div><label class="text-sm font-semibold text-gray-700">ผู้ดูแล</label><input id="aj-caregiver" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
     </div>
-    <div><label class="text-sm font-semibold text-gray-700">ที่พักระหว่างฝึก</label><input id="aj-accommodation" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
     <div class="grid grid-cols-2 gap-3">
       <div><label class="text-sm font-semibold text-gray-700">ผู้ติดต่อฉุกเฉิน</label><input id="aj-emergency-name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
       <div><label class="text-sm font-semibold text-gray-700">เบอร์ฉุกเฉิน</label><input id="aj-emergency-phone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1"></div>
@@ -108,17 +107,16 @@ function submitApplication() {
   if (!selectedCompany) { err.textContent = "กรุณาเลือกบริษัทก่อน"; err.classList.remove("hidden"); return; }
   const position = document.getElementById("aj-position").value.trim();
   const caregiver = document.getElementById("aj-caregiver").value.trim();
-  const accommodation = document.getElementById("aj-accommodation").value.trim();
   const emergencyName = document.getElementById("aj-emergency-name").value.trim();
   const emergencyPhone = document.getElementById("aj-emergency-phone").value.trim();
   const start = document.getElementById("aj-start").value; const end = document.getElementById("aj-end").value;
-  if (!position || !caregiver || !accommodation || !emergencyName || !emergencyPhone || !start || !end) { err.textContent = "กรอกข้อมูลให้ครบ: บริษัท ตำแหน่ง ผู้ดูแล ที่พัก ผู้ติดต่อฉุกเฉิน และช่วงเวลาฝึก"; err.classList.remove("hidden"); return; }
+  if (!position || !caregiver || !emergencyName || !emergencyPhone || !start || !end) { err.textContent = "กรอกข้อมูลให้ครบ: บริษัท ตำแหน่ง ผู้ดูแล ผู้ติดต่อฉุกเฉิน และช่วงเวลาฝึก"; err.classList.remove("hidden"); return; }
   if (end <= start) { err.textContent = "วันสิ้นสุดต้องมากกว่าวันเริ่มฝึก"; err.classList.remove("hidden"); return; }
   err.classList.add("hidden");
   /* ระบบจริง: POST /students/me/job-application */
   application = {
     companyId: selectedCompany.id, companyName: selectedCompany.name, position,
-    caregiver, accommodation, emergencyName, emergencyPhone, startDate: start, endDate: end,
+    caregiver, emergencyName, emergencyPhone, startDate: start, endDate: end,
     status: "APPLIED", history: [{ status: "APPLIED", date: new Date().toISOString().slice(0, 10), by: "นักศึกษา" }],
   };
   saveData("m8_st_application", application); selectedCompany = null;

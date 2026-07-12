@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Platform Dashboard — หน้าแรก (ภาพรวมระบบ)
+
+    Flow:
+    1. โหลด → KPI Cards (Schema, Events, Buckets, DLQ)
+    2. Service Status — แสดง 7 Business Modules
+       └─ ผู้ใช้คลิก "Restart" → 2 วิ → กลับเป็น healthy
+    3. Event Bus Status (NATS nodes, Queue Depth, DLQ)
+    4. Notification Status (sent, failed, dead)
+    5. Recent Audit Log (4 รายการล่าสุด)
+    6. ปุ่ม "รีเฟรช" → อัปเดตเวลา + re-render
+
+    Epic: E2 (Event Bus) · E4 (Notification) · E5 (Audit) · E6 (DevOps)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Dashboard</title>

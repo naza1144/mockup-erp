@@ -1,6 +1,24 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · DevOps & CI/CD (E6)
+
+    Flow:
+    1. โหลด → สถานะ Tools (Docker+Helm / K8s / Secret Management)
+    2. CI/CD Pipeline Status — 7 services
+       └─ service · lastBuild · status (success/failed/running) · version · env
+    3. Observability — Loki (Log) / Prometheus (Metrics) / Grafana (Dashboard)
+    4. Terraform (IaC)
+       └─ State Backend: MinIO · Providers · Modules · Env Workspaces · Resources: 47
+
+    CI/CD Flow:
+    Push → GitHub Actions → Build Docker → Push Registry → Helm Deploy → Health Check → Notify
+
+    Epic: E6 · DevOps — UC-15 (Docker+Helm), UC-16 (K8s), UC-17 (CI/CD), UC-18 (Observability), UC-19 (Secret)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · DevOps</title>

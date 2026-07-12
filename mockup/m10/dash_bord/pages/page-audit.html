@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Audit Log (E5)
+
+    Flow:
+    1. โหลด → ตาราง Audit Log (8 รายการ)
+       └─ เวลา · ผู้กระทำ · Action · Service · Entity · รายละเอียด
+       └─ สี: INSERT=🟢, UPDATE=🔵, DELETE=🔴
+    2. 🔒 Append-only · Immutable — ไม่สามารถแก้ไขหรือลบได้
+
+    Audit Flow:
+    Request → Traefik → Service API → Middleware บันทึก Audit
+      → NATS (audit.logged) → M10 Audit Service → PostgreSQL (append-only)
+
+    Epic: E5 · Audit Log — UC-13 (บันทึกอัตโนมัติ), UC-14 (ค้นหา/ดู)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Audit</title>

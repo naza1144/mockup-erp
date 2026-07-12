@@ -47,26 +47,17 @@
     <hr class="border-gray-100">
 
     <!-- Score -->
-    <div class="grid grid-cols-2 gap-4">
+    <div class="flex flex-wrap items-end gap-5">
       <div>
         <label class="text-sm font-semibold text-gray-700">คะแนน (0-100)</label>
-        <input id="iv-score" type="number" min="0" max="100" class="w-full max-w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
+        <input id="iv-score" type="number" min="0" max="100" oninput="updateScoreResult()" class="w-full max-w-[160px] border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
       </div>
       <div>
-        <label class="text-sm font-semibold text-gray-700">ผลตัดสิน</label>
-        <select id="iv-decision" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1">
-          <option value="">— เลือกผล —</option>
-          <option value="PASS">ผ่าน</option>
-          <option value="FAIL">ไม่ผ่าน</option>
-        </select>
+        <p class="text-sm font-semibold text-gray-700 mb-1">ผลลัพธ์อัตโนมัติ</p>
+        <span id="iv-result" class="inline-flex rounded-full bg-gray-100 text-gray-500 px-3 py-2 text-sm font-semibold">รอกรอกคะแนน</span>
       </div>
     </div>
-
-    <!-- Comments -->
-    <div>
-      <label class="text-sm font-semibold text-gray-700">ความเห็นกรรมการ</label>
-      <textarea id="iv-comment" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="บันทึกความเห็น..."></textarea>
-    </div>
+    <p class="text-xs text-gray-500">เกณฑ์: 0–49 คะแนน = ไม่ผ่าน · 50–100 คะแนน = ผ่าน</p>
 
     <p id="iv-error" class="text-xs text-red-600 hidden"></p>
 
@@ -84,16 +75,29 @@ let queue = loadQueue();
 const id = Number(new URLSearchParams(location.search).get("id"));
 let currentInterview = queue.find(a => a.id === id) || null;
 
+function decisionFromScore(score) { return score >= 50 ? 'PASS' : 'FAIL'; }
+
+function updateScoreResult() {
+  const raw = document.getElementById('iv-score').value;
+  const result = document.getElementById('iv-result');
+  if (raw === '' || Number(raw) < 0 || Number(raw) > 100) {
+    result.textContent = 'รอกรอกคะแนน';
+    result.className = 'inline-flex rounded-full bg-gray-100 text-gray-500 px-3 py-2 text-sm font-semibold';
+    return;
+  }
+  const passed = decisionFromScore(Number(raw)) === 'PASS';
+  result.textContent = passed ? 'ผ่าน' : 'ไม่ผ่าน';
+  result.className = `inline-flex rounded-full px-3 py-2 text-sm font-semibold ${passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+}
+
 /* ===== Save interview result ===== */
 function saveInterviewResult() {
   if (!currentInterview) return;
   const score = document.getElementById('iv-score').value;
-  const decision = document.getElementById('iv-decision').value;
-  const comment = document.getElementById('iv-comment').value.trim();
   const err = document.getElementById('iv-error');
 
-  if (!score || decision === '') {
-    err.textContent = 'กรุณากรอกคะแนนและเลือกผลตัดสิน'; err.classList.remove('hidden'); return;
+  if (score === '') {
+    err.textContent = 'กรุณากรอกคะแนน'; err.classList.remove('hidden'); return;
   }
   const s = Number(score);
   if (s < 0 || s > 100 || isNaN(s)) {
@@ -102,8 +106,8 @@ function saveInterviewResult() {
   err.classList.add('hidden');
 
   currentInterview.score = s;
-  currentInterview.decision = decision;
-  currentInterview.comment = comment;
+  currentInterview.decision = decisionFromScore(s);
+  currentInterview.comment = null;
   currentInterview.status = 'DONE';
 
   saveData('m4_interview_queue', queue);
@@ -162,8 +166,7 @@ function render() {
     }
 
     document.getElementById('iv-score').value = a.score ?? '';
-    document.getElementById('iv-decision').value = a.decision ?? '';
-    document.getElementById('iv-comment').value = a.comment ?? '';
+    updateScoreResult();
     document.getElementById('iv-error').classList.add('hidden');
   }
 }

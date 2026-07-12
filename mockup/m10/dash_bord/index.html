@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Platform Console — หน้าหลัก (Shell)
+
+    Flow:
+    1. โหลด → Header (ชื่อระบบ + User: Admin/DevOps + ปุ่มรีเซ็ต)
+    2. Sidebar 9 เมนู (Dashboard, Schema, Event Bus, Storage, Notification,
+                      Audit Log, DevOps & CI/CD, API Standards, Traefik Admin)
+    3. [คลิกเมนู] → setActive() → iframe เปิด page นั้น
+    4. Content Area → iframe แสดง page ย่อย
+    5. รองรับ postMessage จาก child iframe เพื่อ sync active menu
+
+    Epics ทั้งหมด: E1 (Schema) · E2 (Event Bus) · E3 (Storage)
+                   E4 (Notification) · E5 (Audit) · E6 (DevOps) · E7 (Standards)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Platform Console</title>

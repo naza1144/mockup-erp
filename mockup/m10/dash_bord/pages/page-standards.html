@@ -1,6 +1,24 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · API & Platform Standards (E7)
+
+    Flow:
+    1. OpenAPI 3.0 — ทุก service มี spec + Swagger UI
+    2. Error Format มาตรฐาน — { code, message, traceId }
+    3. Pagination Convention — page, limit, sort, total
+    4. API Versioning — /v1/ prefix ทุก service
+    5. Traefik Middleware (รวมศูนย์)
+       └─ JWT ForwardAuth · Rate Limit · CORS · Security Headers
+
+    API Request Flow:
+    Client → Traefik (Rate Limit → JWT ForwardAuth → CORS) → Service (/v1/...) → Response
+
+    Epic: E7 · API Standards — UC-20 (มาตรฐาน API), UC-21 (Traefik Middleware)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · API Standards</title>

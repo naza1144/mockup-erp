@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Event Bus (E2)
+
+    Flow:
+    1. โหลด → NATS JetStream Cluster Status
+       └─ Nodes: 3/3, Messages/sec: 245, Queue Depth: 1,289
+    2. Dead-letter Queue — event ที่ failed + retry count
+       └─ ปุ่ม "Retry ทั้งหมด" → เคลียร์ DLQ
+    3. Core Events (10 events) — publisher → consumer(s) mapping
+       └─ เช่น account.synced (M0 → M3, M4, M8, M9)
+
+    Epic: E2 · Message Bus — UC-03 (NATS), UC-04 (Schema), UC-05 (DLQ)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Events</title>

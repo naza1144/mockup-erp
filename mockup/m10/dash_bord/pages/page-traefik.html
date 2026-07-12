@@ -1,6 +1,26 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Traefik Admin — API Gateway Dashboard (E7)
+
+    Flow:
+    1. Sidebar 4 tabs: Dashboard, HTTP Routers, HTTP Services, Middlewares, Providers
+    2. [คลิก切换 tab] → switchTab() → show/hide views
+    3. Overview: KPI (8 Routers · 8 Services · 4 Middlewares · 1 Provider)
+    4. Routers — 8 routers + rule + middleware chain + TLS + status
+       └─ เช่น m0-identity → PathPrefix(/m0) → rate-limit, jwt-auth → m0-service
+    5. Services — 8 services + Load Balancer + server count
+    6. Middlewares — rate-limit, jwt-auth, cors-policy, admin-auth
+    7. Providers — Kubernetes CRD (Connected)
+
+    Request Flow:
+    Internet → Traefik (erp.ubu.ac.th:443) → Router → Middleware Chain → Service → Pods
+
+    Epic: E7 · Traefik Middleware — UC-21
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Traefik Dashboard</title>

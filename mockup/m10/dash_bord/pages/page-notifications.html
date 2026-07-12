@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Notification Service (E4)
+
+    Flow:
+    1. โหลด → User Preference (8 event types)
+       └─ แสดง checkbox เปิด/ปิด Email + In-app ต่อ event
+       └─ [แก้ไข] → [บันทึก] → saveData → alert
+    2. Delivery Log — 5 รายการส่งล่าสุด
+       └─ เวลา · event · title · channel · สถานะ (sent/failed/dead)
+
+    Notification Flow (Event-driven):
+    Service → NATS → M10 Notification → ตรวจสอบ Preference
+      ├─ email=true → ส่ง Email (SMTP)
+      └─ in_app=true → ส่ง In-app (WebSocket)
+      ↓
+    บันทึก Delivery Log
+
+    Epic: E4 · Notification — UC-09 (Email), UC-10 (In-app), UC-11 (Preference), UC-12 (Event-driven)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Notifications</title>

@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · File Storage — MinIO (E3)
+
+    Flow:
+    1. โหลด → Buckets ต่อ Domain (5 buckets)
+       └─ account-avatars, curriculum-docs, student-files, thesis-files, coop-reports
+    2. Presigned URL Generator (UC-07)
+       └─ [เลือก bucket] → [Generate] → ได้ URL สำหรับ upload ตรงถึง MinIO
+    3. Lifecycle Policy (UC-08)
+       └─ กำหนดอายุไฟล์ → DELETE หรือ Archive to Glacier
+
+    Epic: E3 · File Storage — UC-06 (Buckets), UC-07 (Presigned URL), UC-08 (Lifecycle)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Storage</title>

@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!--
+    ═══════════════════════════════════════════════════════
+    M10 · Schema & Data Silo (E1)
+
+    Flow:
+    1. โหลด → Schema ต่อ Service (10 schemas)
+       └─ identity, curriculum, planning, faculty, registry, coop, thesis, quality, finance, analytics
+    2. No Cross-schema JOIN Policy — DB user มีสิทธิ์เฉพาะ schema ตัวเอง
+    3. Migration Status — 6 migrations applied
+
+    Epic: E1 · Data Silo — UC-01 (Schema), UC-02 (No Cross-schema JOIN)
+    ═══════════════════════════════════════════════════════
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>M10 · Schema</title>
