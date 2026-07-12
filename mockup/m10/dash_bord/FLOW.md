@@ -313,7 +313,7 @@ Request → Traefik → Service API → Middleware บันทึก Audit
 [โหลดหน้า]
     ↓
 ├─ Row 1: สถานะ Tools (3 คอลัมน์)
-│   ├─ Docker + Helm: ✅ Dockerfile template, ✅ Helm chart
+│   ├─ Docker: ✅ Dockerfile template, ✅ Helm chart
 │   ├─ Kubernetes: ✅ K8s manifests, ✅ Namespace แยกต่อ service
 │   └─ Secret Management: ✅ No plain-text in git
 │
