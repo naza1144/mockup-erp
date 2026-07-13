@@ -15,6 +15,8 @@
   <div id="topic-rejected-banner" class="hidden mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3"></div>
   <h1 class="text-2xl font-bold mb-4">เสนอหัวข้อโครงงาน/วิทยานิพนธ์</h1>
   <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+    <div><label class="text-sm font-semibold text-gray-700">ชื่อหัวข้อโครงงาน</label>
+      <input id="tp-topic-name" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-pink-300" placeholder="เช่น ระบบจัดการร้านอาหารอัจฉริยะ"></div>
     <div class="grid grid-cols-2 gap-4">
       <div><label class="text-sm font-semibold text-gray-700">ชื่อเรื่อง (ไทย)</label>
         <input id="tp-title-th" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-pink-300"></div>
@@ -55,13 +57,14 @@ function submitTopic() {
   if (thesis && ["SUBMITTED", "APPROVED"].includes(thesis.status)) {
     err.textContent = "คุณมีหัวข้อที่มีสถานะ active อยู่แล้ว — ไม่สามารถเสนอซ้ำได้"; err.classList.remove("hidden"); return;
   }
+  const topicName = document.getElementById("tp-topic-name").value.trim();
   const titleTh = document.getElementById("tp-title-th").value.trim();
   const titleEn = document.getElementById("tp-title-en").value.trim();
   const mainFunction = document.getElementById("tp-main-function").value.trim();
   const comparison = document.getElementById("tp-comparison").value.trim();
   const tools = document.getElementById("tp-tools").value.trim();
   const mainAdv = document.getElementById("tp-main-advisor").value;
-  if (!titleTh || !titleEn || !mainFunction || !comparison || !tools || !mainAdv) {
+  if (!topicName || !titleTh || !titleEn || !mainFunction || !comparison || !tools || !mainAdv) {
     err.textContent = "กรอกข้อมูลให้ครบทุกช่อง และเลือกที่ปรึกษาหลัก ก่อนส่งหัวข้อ"; err.classList.remove("hidden"); return;
   }
   err.classList.add("hidden");
@@ -71,7 +74,7 @@ function submitTopic() {
   const currentAcademicYear = new Date().getFullYear() + 543;
   /* ระบบจริง: POST /theses แล้ว POST /theses/{id}/advisors */
   thesis = {
-    titleTh, titleEn,
+    topicName, titleTh, titleEn,
     program: thesis?.program || "CS-2566",
     academicYear: thesis?.academicYear || currentAcademicYear,
     mainFunction, comparison, tools,
