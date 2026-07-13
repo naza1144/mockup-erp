@@ -18,6 +18,7 @@
       <span class="font-semibold text-sm">ERP บริหารหลักสูตร · โครงงาน/วิทยานิพนธ์ (กรรมการ/เจ้าหน้าที่)</span>
     </div>
     <div class="flex items-center gap-2">
+      <button onclick="if (confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นใช่หรือไม่?')) resetData()" class="border border-rose-200 bg-rose-50 text-rose-700 rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-rose-100">รีเซ็ตข้อมูล</button>
       <label class="text-xs text-gray-500">บทบาท (จำลอง):</label>
       <select onchange="setRole(this.value)" id="roleSwitch" class="border border-gray-300 rounded-lg px-2 py-1 text-sm">
         <option value="course_manager">ผจก.รายวิชา (Course Manager)</option>
@@ -33,6 +34,7 @@
       <a data-page="topics" data-roles="course_manager" href="pages/page-topics.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">รายการหัวข้อ</a>
       <a data-page="topic-history-review" data-roles="course_manager" href="pages/page-topic-history-review.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">ประวัติหัวข้อวิทยานิพนธ์</a>
       <a data-page="criteria" data-roles="course_manager" href="pages/page-criteria.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">กำหนดเกณฑ์ให้คะแนน</a>
+      <a data-page="advisor-response" data-roles="advisor" href="pages/page-advisor-response.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">ตอบรับ/ปฏิเสธการรับเป็นที่ปรึกษา</a>
       <a data-page="availability" data-roles="committee" href="pages/page-availability.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">จัดการเวลาว่างสอบของฉัน</a>
       <a data-page="score" data-roles="committee" href="pages/page-score.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">ให้คะแนนสอบ</a>
       <a data-page="milestone-approve" data-roles="advisor" href="pages/page-milestone-approve.html" target="main-frame" class="menu-link block w-full px-3 py-2 rounded-lg text-sm text-left text-gray-600 hover:bg-gray-50">ตรวจสอบ Milestone + เอกสาร</a>
@@ -59,7 +61,7 @@ function setRole(role) {
   localStorage.setItem("m9_sc_role", role);
   document.getElementById("roleSwitch").value = role;
   document.querySelectorAll("[data-roles]").forEach((el) => el.classList.toggle("hidden", !el.dataset.roles.split(",").includes(role)));
-  const entry = { course_manager: "page-topics.html", committee: "page-availability.html", advisor: "page-milestone-approve.html" };
+  const entry = { course_manager: "page-topics.html", committee: "page-availability.html", advisor: "page-advisor-response.html" };
   document.getElementById("main-frame").src = "pages/" + entry[role];
 }
 

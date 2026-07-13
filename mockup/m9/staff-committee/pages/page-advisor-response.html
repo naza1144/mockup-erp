@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M9 กรรมการ/เจ้าหน้าที่ · ตอบรับ/ปฏิเสธการรับเป็นที่ปรึกษา</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-6" onload="init()">
+
+<div>
+  <h1 class="text-2xl font-bold mb-2">ตอบรับ/ปฏิเสธการรับเป็นที่ปรึกษา</h1>
+  <p class="text-sm text-gray-500 mb-4">อาจารย์ที่ปรึกษา review คำขอรับหัวข้อจากนักศึกษา พร้อมตอบรับหรือปฏิเสธได้จากหน้าจอนี้</p>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+        <tr>
+          <th class="text-left px-4 py-3">นักศึกษา</th>
+          <th class="text-left px-4 py-3">หัวข้อ</th>
+          <th class="text-left px-4 py-3">สถานะ</th>
+          <th class="text-left px-4 py-3">การตอบกลับ</th>
+        </tr>
+      </thead>
+      <tbody id="advisor-rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="../shared.js"></script>
+<script>
+let theses = loadData("m9_sc_theses", seedTheses);
+
+function acceptAdvisor(id) {
+  const t = theses.find((x) => x.id === id);
+  if (!t) return;
+  t.advisorDecision = { by: ME_INSTRUCTOR_ID, value: "ACCEPTED", at: new Date().toISOString() };
+  saveData("m9_sc_theses", theses);
+  render();
+}
+
+function declineAdvisor(id) {
+  const t = theses.find((x) => x.id === id);
+  if (!t) return;
+  t.advisorDecision = { by: ME_INSTRUCTOR_ID, value: "DECLINED", at: new Date().toISOString() };
+  saveData("m9_sc_theses", theses);
+  render();
+}
+
+function render() {
+  const rows = theses.filter((t) => (t.advisorIds || []).includes(ME_INSTRUCTOR_ID));
+  document.getElementById("advisor-rows").innerHTML = rows.map((t) => {
+    const decision = t.advisorDecision?.value;
+    const statusText = decision === "ACCEPTED" ? "ตอบรับแล้ว" : decision === "DECLINED" ? "ปฏิเสธแล้ว" : "รอคำตอบ";
+    const statusBadge = decision === "ACCEPTED"
+      ? "bg-green-100 text-green-700"
+      : decision === "DECLINED"
+        ? "bg-red-100 text-red-700"
+        : "bg-amber-100 text-amber-700";
+
+    return `<tr class="border-t border-gray-100 hover:bg-gray-50">
+      <td class="px-4 py-3">${t.student}</td>
+      <td class="px-4 py-3">${t.title}</td>
+      <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadge}">${statusText}</span></td>
+      <td class="px-4 py-3 whitespace-nowrap space-x-2">
+        <button onclick="acceptAdvisor(${t.id})" class="text-green-700 hover:bg-green-50 rounded-lg px-2 py-1 text-xs">ตอบรับ</button>
+        <button onclick="declineAdvisor(${t.id})" class="text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 text-xs">ปฏิเสธ</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function init() { render(); notifyParentPage("advisor-response"); }
+</script>
+</body>
+</html>
