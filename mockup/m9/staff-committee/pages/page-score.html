@@ -6,33 +6,83 @@
   <title>M9 กรรมการ/เจ้าหน้าที่ · ให้คะแนนสอบ</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style> body { font-family: 'Noto Sans Thai', sans-serif; } </style>
+  <style>
+    body { font-family: 'Noto Sans Thai', sans-serif; }
+    .score-page { width: 100%; }
+    .score-due-card { min-height: 62px; }
+    .score-form-card { width: 100%; max-width: 512px; }
+    .score-input { width: 80px; height: 31px; }
+  </style>
 </head>
 <body class="bg-gray-50 text-gray-800 p-6" onload="init()">
 
 <!-- ═══ ScoreExam — UC-17 ═══ -->
-<div>
-  <h1 class="text-2xl font-bold mb-4">ให้คะแนนสอบ</h1>
+<main class="score-page">
+  <h1 class="text-2xl font-bold leading-tight mb-4">ให้คะแนนสอบ</h1>
   <p class="text-xs text-gray-500 mb-3">ระบบจริง: INSERT <code>defense_score</code> — 1 row ต่อ (defense_id, committee_member_id, criterion_id) UNIQUE</p>
   <div id="score-due-list" class="mb-4 space-y-2"></div>
-  <div id="score-form-wrap" class="hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-5 max-w-lg space-y-3">
+  <section id="score-form-wrap" class="score-form-card hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
     <p class="text-sm">หัวข้อ: <span id="sc-title" class="font-semibold"></span> · ประเภท: <span id="sc-type"></span></p>
     <p class="text-xs text-gray-500">คะแนนดิบ (0–100) · น้ำหนักตาม <code>score_criterion.weight</code> (SUM=100 per defense_type · BR-M9-003)</p>
     <div id="sc-items" class="space-y-2"></div>
     <p class="text-sm font-semibold">คะแนนถ่วงน้ำหนักของฉัน: <span id="sc-total">0</span></p>
     <p id="sc-error" class="text-xs text-red-600 hidden">กรอกคะแนนให้ครบทุกหัวข้อก่อนบันทึก (Alternative Flow UC-17)</p>
-    <button onclick="saveScore()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกคะแนน</button>
-  </div>
-</div>
+    <button type="button" onclick="saveScore()" class="bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-xl px-4 py-2">บันทึกคะแนน</button>
+  </section>
+</main>
+
 
 <script src="../shared.js"></script>
 <script>
 let theses = loadData("m9_sc_theses", seedTheses);
 let scoreCriteria = loadData("m9_sc_criteria", defaultCriteria());
 const qs = new URLSearchParams(location.search);
-const tid = qs.get("tid") ? Number(qs.get("tid")) : null;
-const idx = qs.get("idx") ? Number(qs.get("idx")) : null;
-const target = tid ? theses.find((x) => x.id === tid) : null;
+let tid = qs.get("tid") ? Number(qs.get("tid")) : null;
+let idx = qs.get("idx") ? Number(qs.get("idx")) : null;
+let target = tid ? theses.find((x) => x.id === tid) : null;
+
+/* Mockup fallback: localStorage อาจมาจาก flow อื่นและยังไม่มีรายการสอบที่ถึงกำหนด
+   จึงเติมรายการตัวอย่างให้หน้า UC-17 สาธิตได้ทันทีเสมอ */
+const hasPendingScore = theses.some((t) => t.defenses?.some((d) => {
+  if (t.id === 2 || t.title === "แอปพลิเคชันติดตามสุขภาพนักศึกษา") return false;
+  const committee = d.committee || t.committee || [];
+  return d.due && committee.includes(ME_INSTRUCTOR_ID) && !d.scores?.[ME_INSTRUCTOR_ID];
+}));
+
+if (!hasPendingScore) {
+  let demoThesis = theses.find((t) => t.id === 3);
+  if (!demoThesis) {
+    const seedDemo = seedTheses.find((t) => t.id === 3) || seedTheses[seedTheses.length - 1];
+    demoThesis = JSON.parse(JSON.stringify(seedDemo));
+    theses.push(demoThesis);
+  }
+  demoThesis.committee = demoThesis.committee?.length ? demoThesis.committee : [ME_INSTRUCTOR_ID, 102, 104];
+  demoThesis.defenses = demoThesis.defenses || [];
+  let demoDefense = demoThesis.defenses.find((d) => d.type === "FINAL");
+  if (!demoDefense) {
+    demoDefense = { type: "FINAL" };
+    demoThesis.defenses.push(demoDefense);
+  }
+  Object.assign(demoDefense, {
+    datetime: "2569-08-02 09:00",
+    duration: 120,
+    mode: "HYBRID",
+    room: "ห้องประชุม 2 (ชั้น 3)",
+    status: "SCHEDULED",
+    result: null,
+    due: true,
+    scores: { ...(demoDefense.scores || {}) },
+  });
+  delete demoDefense.scores[ME_INSTRUCTOR_ID];
+  saveData("m9_sc_theses", theses);
+}
+
+/* ฟอร์มคะแนนจะเปิดเฉพาะเมื่อผู้ใช้กดลิงก์ "ให้คะแนน"
+   ซึ่งส่ง tid และ idx มาทาง query string เท่านั้น */
+if (!target || idx === null || !target.defenses?.[idx]) {
+  target = null;
+  idx = null;
+}
 
 function criteriaTypeOf(d) { return d.type === "PROPOSAL" ? "proposal" : d.type === "PROGRESS" ? "progress" : "final"; }
 
@@ -60,11 +110,18 @@ function updateScoreTotal() {
 function renderDueList() {
   const dueList = [];
   theses.forEach((t) => t.defenses.forEach((d, i) => {
-    if (d.due && d.committee && d.committee.includes(ME_INSTRUCTOR_ID)) {
+    if (t.id === 2 || t.title === "แอปพลิเคชันติดตามสุขภาพนักศึกษา") return;
+    const committee = d.committee || t.committee || [];
+    if (d.due && committee.includes(ME_INSTRUCTOR_ID)) {
       const scored = !!d.scores[ME_INSTRUCTOR_ID];
-      const allScored = d.committee.every((id) => d.scores[id]);
-      dueList.push(`<div class="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between">
-        <div><p class="text-sm font-semibold">${t.title}</p><p class="text-xs text-gray-400">${DEFENSE_TYPE_TH[d.type]} · ${d.datetime} · ${d.duration} นาที · ${MODE_TH[d.mode]} · ${d.room}</p></div>
+      const allScored = committee.every((id) => d.scores[id]);
+      const typeLabel = DEFENSE_TYPE_TH[d.type] || d.type || "-";
+      const dateLabel = d.datetime || "ยังไม่กำหนดวันเวลา";
+      const durationLabel = d.duration ? `${d.duration} นาที` : "ไม่ระบุระยะเวลา";
+      const modeLabel = MODE_TH[d.mode] || d.mode || "-";
+      const roomLabel = d.room || "ยังไม่กำหนดห้อง";
+      dueList.push(`<div class="score-due-card px-3 py-3 flex items-center justify-between gap-4">
+        <div class="min-w-0"><p class="text-sm font-semibold truncate">${t.title}</p><p class="text-xs text-gray-400 mt-0.5">${typeLabel} · ${dateLabel} · ${durationLabel} · ${modeLabel} · ${roomLabel}</p></div>
         ${scored
           ? allScored ? `<a href="page-summary.html?tid=${t.id}&idx=${i}" class="text-pink-700 hover:bg-pink-50 rounded-lg px-2 py-1 text-xs">ไปหน้าสรุปผล (CHAIR)</a>`
                       : `<span class="text-xs text-gray-400">ให้คะแนนแล้ว — รอกรรมการท่านอื่น</span>`
@@ -72,7 +129,9 @@ function renderDueList() {
       </div>`);
     }
   }));
-  document.getElementById("score-due-list").innerHTML = dueList.join("") || `<p class="text-sm text-gray-400">ไม่มีสอบที่ต้องให้คะแนนตอนนี้</p>`;
+  document.getElementById("score-due-list").innerHTML = dueList.length
+    ? `<div class="bg-white rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-200">${dueList.join("")}</div>`
+    : `<p class="text-sm text-gray-400">ไม่มีสอบที่ต้องให้คะแนนตอนนี้</p>`;
 }
 
 function init() {
@@ -81,10 +140,10 @@ function init() {
     const d = target.defenses[idx];
     document.getElementById("score-form-wrap").classList.remove("hidden");
     document.getElementById("sc-title").textContent = target.title;
-    document.getElementById("sc-type").textContent = DEFENSE_TYPE_TH[d.type] || d.type;
+    document.getElementById("sc-type").textContent = criteriaTypeOf(d);
     document.getElementById("sc-items").innerHTML = (scoreCriteria[criteriaTypeOf(d)] || []).map((it) => `
-      <div class="flex items-center gap-2"><label class="text-sm flex-1">${it.name} (${it.weight}%)</label>
-        <input id="sc-item-${it.name}" type="number" min="0" max="100" oninput="updateScoreTotal()" class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm"></div>`).join("");
+      <div class="flex items-center gap-2"><label for="sc-item-${it.name}" class="text-sm flex-1">${it.name} (${it.weight}%)</label>
+        <input id="sc-item-${it.name}" type="number" min="0" max="100" step="1" inputmode="decimal" oninput="updateScoreTotal()" class="score-input border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-400"></div>`).join("");
     updateScoreTotal();
   }
   notifyParentPage("score");
