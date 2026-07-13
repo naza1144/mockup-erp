@@ -18,7 +18,6 @@
     <p>นักศึกษา: <span id="jf-student" class="font-semibold"></span> (GPAX <span id="jf-gpax"></span>, อบรม <span id="jf-hours"></span> ชม.)</p>
     <p>บริษัท: <span id="jf-company"></span> · ตำแหน่ง: <span id="jf-position"></span></p>
     <p>ผู้ดูแล: <span id="jf-caregiver"></span></p>
-    <p>ที่พัก: <span id="jf-accommodation"></span></p>
     <p>ผู้ติดต่อฉุกเฉิน: <span id="jf-emergency"></span></p>
     <p>ช่วงฝึก: <span id="jf-period"></span></p>
     <div class="space-x-2 pt-2">
@@ -61,7 +60,7 @@ function render() {
     const s = students.find((x) => x.id === curJobCtx); const app = s.application;
     document.getElementById("jf-student").textContent = `${s.name} (${s.code})`; document.getElementById("jf-gpax").textContent = s.gpax; document.getElementById("jf-hours").textContent = studentApprovedHours(s);
     document.getElementById("jf-company").textContent = companies.find((c) => c.id === app.companyId)?.name;
-    document.getElementById("jf-position").textContent = app.position; document.getElementById("jf-accommodation").textContent = app.accommodation;
+    document.getElementById("jf-position").textContent = app.position;
     document.getElementById("jf-caregiver").textContent = app.caregiver || "ยังไม่ระบุ";
     document.getElementById("jf-emergency").textContent = [app.emergencyName, app.emergencyPhone].filter(Boolean).join(" · ") || "ยังไม่ระบุ";
     document.getElementById("jf-period").textContent = `${app.startDate} – ${app.endDate}`;
